@@ -1,0 +1,915 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Company;
+use Greenter\See;
+use Greenter\Model\Company\Company as GreenterCompany;
+use Greenter\Model\Company\Address;
+use Greenter\Model\Client\Client as GreenterClient;
+use Greenter\Model\Sale\Invoice as GreenterInvoice;
+use Greenter\Model\Sale\Note as GreenterNote;
+use Greenter\Model\Sale\SaleDetail;
+use Greenter\Model\Sale\Legend;
+use Greenter\Model\Sale\FormaPagos\FormaPagoContado;
+use Greenter\Model\Sale\FormaPagos\FormaPagoCredito;
+use Greenter\Model\Sale\Cuota;
+use Greenter\Model\Summary\Summary;
+use Greenter\Model\Summary\SummaryDetail;
+use Greenter\Model\Summary\SummaryPerception;
+use Greenter\Model\Despatch\Despatch;
+use Greenter\Model\Despatch\DespatchDetail;
+use Greenter\Model\Despatch\Direction;
+use Greenter\Model\Despatch\Shipment;
+use Greenter\Model\Despatch\Transportist;
+use Greenter\Model\Despatch\Driver;
+use Greenter\Model\Despatch\Vehicle;
+use Greenter\Ws\Services\SunatEndpoints;
+use Illuminate\Support\Facades\Log;
+use Exception;
+
+class GreenterService
+{
+    protected $see;
+    protected $company;
+
+    public function __construct(Company $company)
+    {
+        $this->company = $company;
+        $this->see = $this->initializeSee();
+    }
+
+    protected function initializeSee(): See
+    {
+        $see = new See();
+        
+        // Configurar endpoint según modo (producción o beta)
+        $endpoint = $this->company->modo_produccion 
+            ? $this->company->endpoint_produccion 
+            : $this->company->endpoint_beta;
+        
+        $see->setService($endpoint);
+        
+        // Configurar certificado cargando desde archivo
+        try {
+            $certificadoPath = storage_path('app/public/certificado/certificado.pem');
+            
+            if (!file_exists($certificadoPath)) {
+                throw new Exception("Archivo de certificado no encontrado: " . $certificadoPath);
+            }
+            
+            $certificadoContent = file_get_contents($certificadoPath);
+            
+            if ($certificadoContent === false) {
+                throw new Exception("No se pudo leer el archivo de certificado");
+            }
+            
+            $see->setCertificate($certificadoContent);
+            Log::info("Certificado cargado desde archivo: " . $certificadoPath);
+        } catch (Exception $e) {
+            Log::error("Error al configurar certificado: " . $e->getMessage());
+            throw new Exception("Error al configurar certificado: " . $e->getMessage());
+        }
+        
+        // Configurar credenciales SOL
+        $see->setClaveSOL(
+            $this->company->ruc,
+            $this->company->usuario_sol,
+            $this->company->clave_sol
+        );
+        
+        // Configurar cache
+        $cachePath = storage_path('app/greenter/cache');
+        if (!file_exists($cachePath)) {
+            mkdir($cachePath, 0755, true);
+        }
+        $see->setCachePath($cachePath);
+
+        return $see;
+    }
+
+    public function getGreenterCompany(): GreenterCompany
+    {
+        $company = new GreenterCompany();
+        $company->setRuc($this->company->ruc)
+                ->setRazonSocial($this->company->razon_social)
+                ->setNombreComercial($this->company->nombre_comercial);
+
+        $address = new Address();
+        $address->setUbigueo($this->company->ubigeo)
+                ->setDepartamento($this->company->departamento)
+                ->setProvincia($this->company->provincia)
+                ->setDistrito($this->company->distrito)
+                ->setUrbanizacion('-')
+                ->setDireccion($this->company->direccion)
+                ->setCodLocal('0000');
+
+        $company->setAddress($address);
+
+        return $company;
+    }
+
+    public function getGreenterClient($clientData): GreenterClient
+    {
+        $client = new GreenterClient();
+        $client->setTipoDoc($clientData['tipo_documento'])
+               ->setNumDoc($clientData['numero_documento'])
+               ->setRznSocial($clientData['razon_social']);
+
+        if (isset($clientData['direccion'])) {
+            $address = new Address();
+            $address->setDireccion($clientData['direccion']);
+            if (isset($clientData['ubigeo'])) {
+                $address->setUbigueo($clientData['ubigeo']);
+            }
+            $client->setAddress($address);
+        }
+
+        return $client;
+    }
+
+    public function createInvoice(array $invoiceData): GreenterInvoice
+    {
+        $invoice = new GreenterInvoice();
+        
+        // Configuración básica
+        $invoice->setUblVersion($invoiceData['ubl_version'] ?? '2.1')
+                ->setTipoOperacion($invoiceData['tipo_operacion'] ?? '0101')
+                ->setTipoDoc($invoiceData['tipo_documento'])
+                ->setSerie($invoiceData['serie'])
+                ->setCorrelativo($invoiceData['correlativo'])
+                ->setFechaEmision(new \DateTime($invoiceData['fecha_emision']))
+                ->setTipoMoneda($invoiceData['moneda'] ?? 'PEN');
+
+        // Fecha de vencimiento (opcional)
+        if (isset($invoiceData['fecha_vencimiento'])) {
+            $invoice->setFecVencimiento(new \DateTime($invoiceData['fecha_vencimiento']));
+        }
+
+        // Forma de pago
+        $formaPago = $this->getFormaPago($invoiceData);
+        $invoice->setFormaPago($formaPago);
+
+        // Cuotas (solo para crédito)
+        if (($invoiceData['forma_pago_tipo'] ?? 'Contado') === 'Credito' && isset($invoiceData['forma_pago_cuotas'])) {
+            $cuotas = [];
+            foreach ($invoiceData['forma_pago_cuotas'] as $cuotaData) {
+                $cuota = new Cuota();
+                $cuota->setMoneda($cuotaData['moneda'] ?? 'PEN')
+                      ->setMonto($cuotaData['monto'])
+                      ->setFechaPago(new \DateTime($cuotaData['fecha_pago']));
+                $cuotas[] = $cuota;
+            }
+            $invoice->setCuotas($cuotas);
+        }
+
+        // Detracción
+        if (isset($invoiceData['detraccion']) && !empty($invoiceData['detraccion'])) {
+            $detraccionData = $invoiceData['detraccion'];
+            $detraccion = new \Greenter\Model\Sale\Detraction();
+            
+            $detraccion->setCodBienDetraccion($detraccionData['codigo_bien_servicio'])
+                      ->setCodMedioPago($detraccionData['codigo_medio_pago'] ?? '001')
+                      ->setCtaBanco($detraccionData['cuenta_banco'] ?? '')
+                      ->setPercent($detraccionData['porcentaje']);
+
+            // Calcular monto de detracción
+            if (isset($detraccionData['monto'])) {
+                $detraccion->setMount($detraccionData['monto']);
+            }
+
+            $invoice->setDetraccion($detraccion);
+        }
+
+        // Percepción
+        if (isset($invoiceData['percepcion']) && !empty($invoiceData['percepcion'])) {
+            $percepcionData = $invoiceData['percepcion'];
+            $percepcion = new \Greenter\Model\Sale\SalePerception();
+            
+            $percepcion->setCodReg($percepcionData['cod_regimen'])
+                      ->setPorcentaje($percepcionData['tasa'] / 100) // Convertir porcentaje a decimal
+                      ->setMtoBase($percepcionData['monto_base'])
+                      ->setMto($percepcionData['monto'])
+                      ->setMtoTotal($percepcionData['monto_total']);
+
+            $invoice->setPerception($percepcion);
+        }
+
+        // Retención
+        if (isset($invoiceData['retencion']) && !empty($invoiceData['retencion'])) {
+            $retencionData = $invoiceData['retencion'];
+            $retencion = new \Greenter\Model\Sale\Charge();
+            
+            $retencion->setCodTipo('62') // Código para retenciones (catálogo 53)
+                      ->setMontoBase($retencionData['monto_base'])
+                      ->setFactor($retencionData['tasa'] / 100) // Convertir porcentaje a decimal
+                      ->setMonto($retencionData['monto']);
+
+            $invoice->setDescuentos([$retencion]);
+        }
+
+        // Empresa y cliente
+        $invoice->setCompany($this->getGreenterCompany())
+                ->setClient($this->getGreenterClient($invoiceData['client']));
+
+        // Montos - Manejo especial para exportaciones
+        $tipoOperacion = $invoiceData['tipo_operacion'] ?? '0101';
+        
+        if ($tipoOperacion === '0200') {
+            // Exportación - usar setMtoOperExportacion y NO establecer otros montos
+            $invoice->setMtoOperExportacion($invoiceData['valor_venta'])
+                    ->setMtoIGV(0)
+                    ->setMtoISC($invoiceData['mto_isc'] ?? 0)
+                    ->setMtoOtrosTributos($invoiceData['mto_otros_tributos'] ?? 0)
+                    ->setTotalImpuestos($invoiceData['mto_isc'] ?? 0)
+                    ->setValorVenta($invoiceData['valor_venta'])
+                    ->setSubTotal($invoiceData['valor_venta'])
+                    ->setMtoImpVenta($invoiceData['valor_venta']);
+            
+            // NO establecer monto para operaciones gravadas, exoneradas, inafectas para exportación
+            // Solo exportación y gratuitas si aplican
+            if (isset($invoiceData['mto_oper_gratuitas']) && $invoiceData['mto_oper_gratuitas'] > 0) {
+                $invoice->setMtoOperGratuitas($invoiceData['mto_oper_gratuitas']);
+                
+            }
+        } else {
+            // Operaciones normales
+            $invoice->setMtoOperGravadas($invoiceData['mto_oper_gravadas'])
+                    ->setMtoOperExoneradas($invoiceData['mto_oper_exoneradas'])
+                    ->setMtoOperInafectas($invoiceData['mto_oper_inafectas'])
+                    ->setMtoOperGratuitas($invoiceData['mto_oper_gratuitas'])
+                    ->setMtoIGVGratuitas($invoiceData['mto_igv_gratuitas'] ?? 0)
+                    ->setMtoIGV($invoiceData['mto_igv'])
+                    ->setMtoISC($invoiceData['mto_isc'] ?? 0)
+                    ->setMtoOtrosTributos($invoiceData['mto_otros_tributos'] ?? 0)
+                    ->setTotalImpuestos($invoiceData['total_impuestos'])
+                    ->setValorVenta($invoiceData['valor_venta'])
+                    ->setSubTotal($invoiceData['sub_total'])
+                    ->setMtoImpVenta($invoiceData['mto_imp_venta']);
+        }
+
+        // ICBPER
+        if (isset($invoiceData['mto_icbper']) && $invoiceData['mto_icbper'] > 0) {
+            $invoice->setIcbper($invoiceData['mto_icbper']);
+        }
+
+        // IGV Gratuitas (solo para operaciones gratuitas)
+        if (isset($invoiceData['mto_igv_gratuitas']) && $invoiceData['mto_igv_gratuitas'] > 0) {
+            $invoice->setMtoIGVGratuitas($invoiceData['mto_igv_gratuitas']);
+        }
+
+        // Anticipos
+        if (isset($invoiceData['mto_anticipos']) && $invoiceData['mto_anticipos'] > 0) {
+            $invoice->setMtoAnticipo($invoiceData['mto_anticipos']);
+        }
+
+        // Detalles
+        $details = $this->createSaleDetails($invoiceData['detalles']);
+        $invoice->setDetails($details);
+
+        // Leyendas
+        if (isset($invoiceData['leyendas']) && !empty($invoiceData['leyendas'])) {
+            $legends = $this->createLegends($invoiceData['leyendas']);
+            $invoice->setLegends($legends);
+        }
+
+        return $invoice;
+    }
+
+    public function createNote(array $noteData): GreenterNote
+    {
+        $note = new GreenterNote();
+        
+        // Configuración básica
+        $note->setUblVersion($noteData['ubl_version'] ?? '2.1')
+             ->setTipoDoc($noteData['tipo_documento'])
+             ->setSerie($noteData['serie'])
+             ->setCorrelativo($noteData['correlativo'])
+             ->setFechaEmision(new \DateTime($noteData['fecha_emision']))
+             ->setTipDocAfectado($noteData['tipo_doc_afectado'])
+             ->setNumDocfectado($noteData['num_doc_afectado'])
+             ->setCodMotivo($noteData['cod_motivo'])
+             ->setDesMotivo($noteData['des_motivo'])
+             ->setTipoMoneda($noteData['moneda'] ?? 'PEN');
+
+        // Empresa y cliente
+        $note->setCompany($this->getGreenterCompany())
+             ->setClient($this->getGreenterClient($noteData['client']));
+
+        // Montos
+        $note->setMtoOperGravadas($noteData['mto_oper_gravadas'])
+             ->setMtoOperExoneradas($noteData['mto_oper_exoneradas'])
+             ->setMtoOperInafectas($noteData['mto_oper_inafectas'])
+             ->setMtoIGV($noteData['mto_igv'])
+             ->setTotalImpuestos($noteData['total_impuestos'])
+             ->setMtoImpVenta($noteData['mto_imp_venta']);
+
+        // Detalles
+        $details = $this->createSaleDetails($noteData['detalles']);
+        $note->setDetails($details);
+
+        // Leyendas
+        if (isset($noteData['leyendas']) && !empty($noteData['leyendas'])) {
+            $legends = $this->createLegends($noteData['leyendas']);
+            $note->setLegends($legends);
+        }
+
+        return $note;
+    }
+
+    protected function getFormaPago(array $invoiceData)
+    {
+        $formaPagoTipo = $invoiceData['forma_pago_tipo'] ?? 'Contado';
+        
+        if ($formaPagoTipo === 'Contado') {
+            return new FormaPagoContado();
+        }
+        
+        if ($formaPagoTipo === 'Credito') {
+            // El monto total se puede pasar al constructor o dejar null
+            $montoTotal = $invoiceData['mto_imp_venta'] ?? null;
+            return new FormaPagoCredito($montoTotal);
+        }
+        
+        return new FormaPagoContado();
+    }
+
+    protected function createSaleDetails(array $detalles): array
+    {
+        $details = [];
+        
+        foreach ($detalles as $detalle) {
+            $item = new SaleDetail();
+            $item->setCodProducto($detalle['codigo'])
+                ->setUnidad($detalle['unidad'])
+                ->setDescripcion($detalle['descripcion'])
+                ->setCantidad($detalle['cantidad'])
+                ->setMtoValorUnitario($detalle['mto_valor_unitario'])
+                ->setMtoValorVenta($detalle['mto_valor_venta'])
+                ->setMtoBaseIgv($detalle['mto_base_igv'])
+                ->setPorcentajeIgv($detalle['porcentaje_igv'])
+                ->setIgv($detalle['igv'])
+                ->setTipAfeIgv($detalle['tip_afe_igv'])
+                ->setTotalImpuestos($detalle['total_impuestos'])
+                ->setMtoPrecioUnitario($detalle['mto_precio_unitario']);
+
+            // ISC (opcional)
+            if (isset($detalle['isc']) && $detalle['isc'] > 0) {
+                $item->setIsc($detalle['isc'])
+                     ->setTipSisIsc($detalle['tip_sis_isc'] ?? '01')
+                     ->setMtoBaseIsc($detalle['mto_base_isc'] ?? $detalle['mto_valor_venta']);
+            }
+
+            // ICBPER (opcional)
+            if (isset($detalle['icbper']) && $detalle['icbper'] > 0) {
+                $item->setIcbper($detalle['icbper'])
+                     ->setFactorIcbper($detalle['factor_icbper'] ?? 1);
+            }
+
+            // Valor gratuito (solo para operaciones gratuitas)
+            if (isset($detalle['mto_valor_gratuito']) && $detalle['mto_valor_gratuito'] > 0) {
+                $item->setMtoValorGratuito($detalle['mto_valor_gratuito']);
+            }
+
+            $details[] = $item;
+        }
+        
+        return $details;
+    }
+
+    protected function createLegends(array $leyendas): array
+    {
+        $legends = [];
+        
+        foreach ($leyendas as $leyenda) {
+            $legend = new Legend();
+            $legend->setCode($leyenda['code'])
+                   ->setValue($leyenda['value']);
+            $legends[] = $legend;
+        }
+        
+        return $legends;
+    }
+
+    public function sendDocument($document)
+    {
+        try {
+            $result = $this->see->send($document);
+            
+            return [
+                'success' => $result->isSuccess(),
+                'xml' => $this->see->getFactory()->getLastXml(),
+                'cdr_response' => $result->isSuccess() ? $result->getCdrResponse() : null,
+                'cdr_zip' => $result->isSuccess() ? $result->getCdrZip() : null,
+                'error' => $result->isSuccess() ? null : $result->getError()
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'xml' => null,
+                'cdr_response' => null,
+                'cdr_zip' => null,
+                'error' => (object)[
+                    'code' => 'EXCEPTION',
+                    'message' => $e->getMessage()
+                ]
+            ];
+        }
+    }
+
+    public function getXmlSigned($document): ?string
+    {
+        try {
+            return $this->see->getXmlSigned($document);
+        } catch (Exception $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Prepara y valida el certificado para uso con Greenter
+     */
+    protected function prepareCertificate(string $certificadoPem): string
+    {
+        // Limpiar el certificado removiendo espacios y caracteres innecesarios
+        $certificadoLimpio = trim($certificadoPem);
+        
+        // Normalizar saltos de línea (muy importante para ASN.1)
+        $certificadoLimpio = str_replace(["\r\n", "\r"], "\n", $certificadoLimpio);
+        
+        // Remover espacios en blanco al inicio y final de cada línea
+        $lines = explode("\n", $certificadoLimpio);
+        $lines = array_map('trim', $lines);
+        $certificadoLimpio = implode("\n", $lines);
+        
+        // Validar que tenga la estructura correcta
+        if (!$this->isValidPemStructure($certificadoLimpio)) {
+            throw new Exception('El certificado PEM no tiene una estructura válida');
+        }
+        
+        // Reconstruir completamente el certificado para máxima compatibilidad
+        $certificadoLimpio = $this->reconstructPemCertificate($certificadoLimpio);
+        
+        return $certificadoLimpio;
+    }
+
+    /**
+     * Valida la estructura básica del certificado PEM
+     */
+    protected function isValidPemStructure(string $pem): bool
+    {
+        // Debe tener clave privada y certificado (en cualquier orden)
+        $hasPrivateKey = strpos($pem, '-----BEGIN PRIVATE KEY-----') !== false && 
+                        strpos($pem, '-----END PRIVATE KEY-----') !== false;
+        
+        $hasCertificate = strpos($pem, '-----BEGIN CERTIFICATE-----') !== false && 
+                         strpos($pem, '-----END CERTIFICATE-----') !== false;
+        
+        // También puede ser RSA PRIVATE KEY
+        $hasRsaPrivateKey = strpos($pem, '-----BEGIN RSA PRIVATE KEY-----') !== false && 
+                           strpos($pem, '-----END RSA PRIVATE KEY-----') !== false;
+        
+        $hasValidPrivateKey = $hasPrivateKey || $hasRsaPrivateKey;
+        
+        Log::info("Validando estructura PEM: Certificate={$hasCertificate}, PrivateKey={$hasValidPrivateKey}");
+        
+        return $hasValidPrivateKey && $hasCertificate;
+    }
+
+    /**
+     * Normaliza los headers del certificado PEM
+     */
+    protected function normalizePemHeaders(string $pem): string
+    {
+        // Asegurar que los headers estén en líneas separadas
+        $pem = str_replace('-----BEGIN PRIVATE KEY-----', "\n-----BEGIN PRIVATE KEY-----\n", $pem);
+        $pem = str_replace('-----END PRIVATE KEY-----', "\n-----END PRIVATE KEY-----\n", $pem);
+        $pem = str_replace('-----BEGIN CERTIFICATE-----', "\n-----BEGIN CERTIFICATE-----\n", $pem);
+        $pem = str_replace('-----END CERTIFICATE-----', "\n-----END CERTIFICATE-----\n", $pem);
+        
+        // Limpiar múltiples saltos de línea
+        $pem = preg_replace("/\n+/", "\n", $pem);
+        
+        return trim($pem);
+    }
+
+    /**
+     * Reconstruye completamente el certificado PEM para máxima compatibilidad
+     */
+    protected function reconstructPemCertificate(string $pem): string
+    {
+        $output = [];
+        
+        // Limpiar completamente el contenido removiendo Bag Attributes y otras líneas no esenciales
+        $cleanedPem = $this->removeBagAttributes($pem);
+        
+        // Extraer clave privada (PRIVATE KEY o RSA PRIVATE KEY)
+        $privateKeyExtracted = false;
+        if (preg_match('/-----BEGIN PRIVATE KEY-----(.*?)-----END PRIVATE KEY-----/s', $cleanedPem, $matches)) {
+            $privateKey = preg_replace('/\s+/', '', $matches[1]);
+            $output[] = "-----BEGIN PRIVATE KEY-----";
+            $output[] = chunk_split($privateKey, 64, "\n");
+            $output[] = "-----END PRIVATE KEY-----";
+            $privateKeyExtracted = true;
+        } elseif (preg_match('/-----BEGIN RSA PRIVATE KEY-----(.*?)-----END RSA PRIVATE KEY-----/s', $cleanedPem, $matches)) {
+            $privateKey = preg_replace('/\s+/', '', $matches[1]);
+            $output[] = "-----BEGIN RSA PRIVATE KEY-----";
+            $output[] = chunk_split($privateKey, 64, "\n");
+            $output[] = "-----END RSA PRIVATE KEY-----";
+            $privateKeyExtracted = true;
+        }
+        
+        // Extraer certificado
+        if (preg_match('/-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----/s', $cleanedPem, $matches)) {
+            $certificate = preg_replace('/\s+/', '', $matches[1]);
+            $output[] = "-----BEGIN CERTIFICATE-----";
+            $output[] = chunk_split($certificate, 64, "\n");
+            $output[] = "-----END CERTIFICATE-----";
+        }
+        
+        Log::info("PEM reconstruido: PrivateKey={$privateKeyExtracted}, blocks=" . count($output));
+        
+        return implode("\n", $output);
+    }
+
+    /**
+     * Remueve Bag Attributes y otras líneas que interfieren con OpenSSL
+     */
+    protected function removeBagAttributes(string $pem): string
+    {
+        $lines = explode("\n", $pem);
+        $cleanedLines = [];
+        $inPemBlock = false;
+        
+        foreach ($lines as $line) {
+            $trimmedLine = trim($line);
+            
+            // Detectar inicio de bloque PEM
+            if (strpos($trimmedLine, '-----BEGIN') === 0) {
+                $inPemBlock = true;
+            }
+            
+            // Solo incluir líneas que son parte del bloque PEM
+            if ($inPemBlock) {
+                $cleanedLines[] = $line;
+            }
+            
+            // Detectar fin de bloque PEM
+            if (strpos($trimmedLine, '-----END') === 0) {
+                $inPemBlock = false;
+            }
+        }
+        
+        return implode("\n", $cleanedLines);
+    }
+
+    /**
+     * Crea un archivo temporal con el certificado limpio
+     */
+    protected function createTempCertificate(string $certificadoLimpio): string
+    {
+        $tempDir = storage_path('app/temp/certificados');
+        
+        // Crear directorio si no existe
+        if (!file_exists($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
+        
+        // Crear archivo temporal
+        $tempPath = $tempDir . '/cert_' . $this->company->ruc . '_' . time() . '.pem';
+        file_put_contents($tempPath, $certificadoLimpio);
+        
+        return $tempPath;
+    }
+
+    public function createBoleta(array $boletaData): GreenterInvoice
+    {
+        // Las boletas usan el mismo modelo Invoice de Greenter
+        // pero con tipo de documento '03'
+        $boletaData['tipo_documento'] = '03';
+        $boletaData['ubl_version'] = $boletaData['ubl_version'] ?? '2.1';
+        $boletaData['tipo_operacion'] = $boletaData['tipo_operacion'] ?? '0101';
+        
+        // Crear la boleta usando el método de factura
+        return $this->createInvoice($boletaData);
+    }
+
+    public function createSummary(array $summaryData): Summary
+    {
+        $summary = new Summary();
+        
+        // Configuración básica
+        $summary->setFecGeneracion(new \DateTime($summaryData['fecha_generacion']))
+                ->setFecResumen(new \DateTime($summaryData['fecha_resumen']))
+                ->setCorrelativo($summaryData['correlativo'])
+                ->setCompany($this->getGreenterCompany());
+
+        // Crear detalles del resumen
+        $details = [];
+        foreach ($summaryData['detalles'] as $detalleData) {
+            $detail = new SummaryDetail();
+            
+            $detail->setTipoDoc($detalleData['tipo_documento'])
+                   ->setSerieNro($detalleData['serie_numero'])
+                   ->setEstado($detalleData['estado'])
+                   ->setClienteTipo($detalleData['cliente_tipo'])
+                   ->setClienteNro($detalleData['cliente_numero'])
+                   ->setTotal($detalleData['total'])
+                   ->setMtoOperGravadas($detalleData['mto_oper_gravadas'] ?? 0)
+                   ->setMtoOperExoneradas($detalleData['mto_oper_exoneradas'] ?? 0)
+                   ->setMtoOperInafectas($detalleData['mto_oper_inafectas'] ?? 0)
+                   ->setMtoIGV($detalleData['mto_igv'] ?? 0);
+
+            // Campos opcionales
+            if (isset($detalleData['mto_oper_exportacion'])) {
+                $detail->setMtoOperExportacion($detalleData['mto_oper_exportacion']);
+            }
+
+            if (isset($detalleData['mto_oper_gratuitas'])) {
+                $detail->setMtoOperGratuitas($detalleData['mto_oper_gratuitas']);
+            }
+
+            if (isset($detalleData['mto_isc'])) {
+                $detail->setMtoISC($detalleData['mto_isc']);
+            }
+
+            if (isset($detalleData['mto_icbper'])) {
+                $detail->setMtoICBPER($detalleData['mto_icbper']);
+            }
+
+            if (isset($detalleData['mto_otros_cargos'])) {
+                $detail->setMtoOtrosCargos($detalleData['mto_otros_cargos']);
+            }
+
+            // Documento de referencia (para notas de crédito/débito)
+            if (isset($detalleData['documento_referencia']) && !empty($detalleData['documento_referencia'])) {
+                $docRef = new \Greenter\Model\Sale\Document();
+                $docRef->setTipoDoc($detalleData['documento_referencia']['tipo_documento'])
+                       ->setNroDoc($detalleData['documento_referencia']['numero_documento']);
+                $detail->setDocReferencia($docRef);
+            }
+
+            // Percepción (opcional)
+            if (isset($detalleData['percepcion']) && !empty($detalleData['percepcion'])) {
+                $percepcion = new SummaryPerception();
+                $percepcion->setCodReg($detalleData['percepcion']['cod_regimen'])
+                          ->setTasa($detalleData['percepcion']['tasa'])
+                          ->setMtoBase($detalleData['percepcion']['monto_base'])
+                          ->setMto($detalleData['percepcion']['monto'])
+                          ->setMtoTotal($detalleData['percepcion']['monto_total']);
+                $detail->setPercepcion($percepcion);
+            }
+
+            $details[] = $detail;
+        }
+
+        $summary->setDetails($details);
+
+        return $summary;
+    }
+
+    public function sendSummaryDocument($summary)
+    {
+        try {
+            $result = $this->see->send($summary);
+            
+            return [
+                'success' => $result->isSuccess(),
+                'xml' => $this->see->getFactory()->getLastXml(),
+                'ticket' => $result->isSuccess() ? $result->getTicket() : null,
+                'error' => $result->isSuccess() ? null : $result->getError()
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'xml' => null,
+                'ticket' => null,
+                'error' => (object)[
+                    'code' => 'EXCEPTION',
+                    'message' => $e->getMessage()
+                ]
+            ];
+        }
+    }
+
+    public function checkSummaryStatus(string $ticket)
+    {
+        try {
+            $result = $this->see->getStatus($ticket);
+            
+            return [
+                'success' => $result->isSuccess(),
+                'cdr_response' => $result->isSuccess() ? $result->getCdrResponse() : null,
+                'cdr_zip' => $result->isSuccess() ? $result->getCdrZip() : null,
+                'error' => $result->isSuccess() ? null : $result->getError()
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'cdr_response' => null,
+                'cdr_zip' => null,
+                'error' => (object)[
+                    'code' => 'EXCEPTION',
+                    'message' => $e->getMessage()
+                ]
+            ];
+        }
+    }
+
+    public function createDespatch(array $despatchData): Despatch
+    {
+        $despatch = new Despatch();
+        
+        // Configuración básica
+        $despatch->setVersion($despatchData['version'] ?? '2022')
+                 ->setTipoDoc($despatchData['tipo_documento'])
+                 ->setSerie($despatchData['serie'])
+                 ->setCorrelativo($despatchData['correlativo'])
+                 ->setFechaEmision(new \DateTime($despatchData['fecha_emision']));
+
+        // Empresa y destinatario
+        $despatch->setCompany($this->getGRECompany())
+                 ->setDestinatario($this->getGreenterClient($despatchData['destinatario']));
+
+        // Crear objeto de envío
+        $envio = new Shipment();
+        $envio->setCodTraslado($despatchData['cod_traslado'])
+              ->setModTraslado($despatchData['mod_traslado'])
+              ->setFecTraslado(new \DateTime($despatchData['fec_traslado']))
+              ->setPesoTotal($despatchData['peso_total'])
+              ->setUndPesoTotal($despatchData['und_peso_total'])
+              ->setLlegada(new Direction($despatchData['llegada_ubigeo'], $despatchData['llegada_direccion']))
+              ->setPartida(new Direction($despatchData['partida_ubigeo'], $despatchData['partida_direccion']));
+
+        // Agregar número de bultos si está presente
+        if (isset($despatchData['num_bultos']) && $despatchData['num_bultos'] > 0) {
+            $envio->setNumBultos($despatchData['num_bultos']);
+        }
+
+        // Configurar transporte según modalidad
+        if ($despatchData['mod_traslado'] === '01') {
+            // Transporte público - Transportista
+            if (isset($despatchData['transportista'])) {
+                $transportista = new Transportist();
+                $transportista->setTipoDoc($despatchData['transportista']['tipo_doc'])
+                             ->setNumDoc($despatchData['transportista']['num_doc'])
+                             ->setRznSocial($despatchData['transportista']['razon_social']);
+                
+                if (isset($despatchData['transportista']['nro_mtc'])) {
+                    $transportista->setNroMtc($despatchData['transportista']['nro_mtc']);
+                }
+                
+                $envio->setTransportista($transportista);
+            }
+        } else {
+            // Transporte privado - Conductor y vehículo
+            if (isset($despatchData['conductor'])) {
+                $conductor = new Driver();
+                $conductor->setTipo($despatchData['conductor']['tipo'])
+                         ->setTipoDoc($despatchData['conductor']['tipo_doc'])
+                         ->setNroDoc($despatchData['conductor']['num_doc'])
+                         ->setLicencia($despatchData['conductor']['licencia'])
+                         ->setNombres($despatchData['conductor']['nombres'])
+                         ->setApellidos($despatchData['conductor']['apellidos']);
+                
+                $envio->setChofer($conductor);
+            }
+
+            // Vehículo principal
+            if (isset($despatchData['vehiculo_placa'])) {
+                $vehiculo = new Vehicle();
+                $vehiculo->setPlaca($despatchData['vehiculo_placa']);
+                
+                // Vehículos secundarios
+                if (isset($despatchData['vehiculos_secundarios']) && !empty($despatchData['vehiculos_secundarios'])) {
+                    $secundarios = [];
+                    foreach ($despatchData['vehiculos_secundarios'] as $secData) {
+                        $secundario = new Vehicle();
+                        $secundario->setPlaca($secData['placa']);
+                        $secundarios[] = $secundario;
+                    }
+                    $vehiculo->setSecundarios($secundarios);
+                }
+                
+                $envio->setVehiculo($vehiculo);
+            }
+        }
+
+        $despatch->setEnvio($envio);
+
+        // Crear detalles
+        $details = [];
+        foreach ($despatchData['detalles'] as $detalleData) {
+            $detail = new DespatchDetail();
+            $detail->setCantidad($detalleData['cantidad'])
+                   ->setUnidad($detalleData['unidad'])
+                   ->setDescripcion($detalleData['descripcion'])
+                   ->setCodigo($detalleData['codigo']);
+
+            if (isset($detalleData['codigo_sunat'])) {
+                $detail->setCodProdSunat($detalleData['codigo_sunat']);
+            }
+
+            $details[] = $detail;
+        }
+
+        $despatch->setDetails($details);
+
+        // Observaciones
+        if (isset($despatchData['observaciones'])) {
+            $despatch->setObservacion($despatchData['observaciones']);
+        }
+
+        return $despatch;
+    }
+
+    protected function getGRECompany()
+    {
+        // Para GRE (Guías de Remisión Electrónicas) se necesita configuración especial
+        $company = new GreenterCompany();
+        
+        $company->setRuc($this->company->ruc)
+                ->setRazonSocial($this->company->razon_social)
+                ->setNombreComercial($this->company->nombre_comercial ?? '')
+                ->setAddress((new Address())
+                    ->setUbigueo($this->company->ubigeo ?? '150101')
+                    ->setDepartamento($this->company->departamento ?? '')
+                    ->setProvincia($this->company->provincia ?? '')
+                    ->setDistrito($this->company->distrito ?? '')
+                    ->setUrbanizacion($this->company->urbanizacion ?? '')
+                    ->setDireccion($this->company->direccion ?? '')
+                    ->setCodLocal('0000') // Para GRE, código de local
+                );
+
+        return $company;
+    }
+
+    public function sendDespatchDocument($despatch)
+    {
+        try {
+            // Para guías de remisión se usa un endpoint específico (getSeeApi)
+            $api = $this->getSeeApi();
+            $result = $api->send($despatch);
+            
+            return [
+                'success' => $result->isSuccess(),
+                'xml' => $api->getLastXml(),
+                'ticket' => $result->isSuccess() ? $result->getTicket() : null,
+                'error' => $result->isSuccess() ? null : $result->getError()
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'xml' => null,
+                'ticket' => null,
+                'error' => (object)[
+                    'code' => 'EXCEPTION',
+                    'message' => $e->getMessage()
+                ]
+            ];
+        }
+    }
+
+    public function checkDespatchStatus(string $ticket)
+    {
+        try {
+            $api = $this->getSeeApi();
+            $result = $api->getStatus($ticket);
+            
+            return [
+                'success' => $result->isSuccess(),
+                'cdr_response' => $result->isSuccess() ? $result->getCdrResponse() : null,
+                'cdr_zip' => $result->isSuccess() ? $result->getCdrZip() : null,
+                'error' => $result->isSuccess() ? null : $result->getError()
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'cdr_response' => null,
+                'cdr_zip' => null,
+                'error' => (object)[
+                    'code' => 'EXCEPTION',
+                    'message' => $e->getMessage()
+                ]
+            ];
+        }
+    }
+
+    protected function getSeeApi()
+    {
+        // Para GRE se necesita una instancia API específica
+        $see = new \Greenter\Api();
+        
+        // Configurar endpoint GRE
+        $endpoint = $this->company->modo_produccion 
+            ? 'https://api-seguridad.sunat.gob.pe/v1/clientesextranet/{ruc}/oauth2/token/' // Producción
+            : 'https://gre-test.nubefact.com/v1/'; // Beta/Test
+            
+        $see->setService($endpoint);
+        
+        // Configurar certificado
+        $see->setCertificate(file_get_contents($this->getCertificatePath()));
+        
+        return $see;
+    }
+}

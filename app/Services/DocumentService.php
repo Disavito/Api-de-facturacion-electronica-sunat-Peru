@@ -1,0 +1,1366 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Company;
+use App\Models\Branch;
+use App\Models\Client;
+use App\Models\Invoice;
+use App\Models\Boleta;
+use App\Models\CreditNote;
+use App\Models\DebitNote;
+use App\Models\DailySummary;
+use App\Services\GreenterService;
+use App\Services\FileService;
+use App\Services\PdfService;
+use Illuminate\Support\Facades\DB;
+use Exception;
+
+class DocumentService
+{
+    protected $fileService;
+    protected $pdfService;
+
+    public function __construct(FileService $fileService, PdfService $pdfService)
+    {
+        $this->fileService = $fileService;
+        $this->pdfService = $pdfService;
+    }
+
+    public function createInvoice(array $data): Invoice
+    {
+        return DB::transaction(function () use ($data) {
+            // Validar y obtener entidades
+            $company = Company::findOrFail($data['company_id']);
+            $branch = Branch::where('company_id', $company->id)
+                           ->where('id', $data['branch_id'])
+                           ->firstOrFail();
+            
+            // Crear o buscar cliente
+            $client = $this->getOrCreateClient($data['client']);
+            
+            // Obtener siguiente correlativo
+            $serie = $data['serie'];
+            $correlativo = $branch->getNextCorrelative('01', $serie);
+            
+            // Preparar datos globales para cálculos
+            $globalData = [
+                'descuentos' => $data['descuentos'] ?? [],
+                'anticipos' => $data['anticipos'] ?? [],
+                'redondeo' => $data['redondeo'] ?? 0,
+            ];
+            
+            // Procesar detalles según tipo de operación antes de calcular totales
+            $tipoOperacion = $data['tipo_operacion'] ?? '0101';
+            $this->processDetailsForOperationType($data['detalles'], $tipoOperacion);
+            
+            // Calcular totales automáticamente
+            $totals = $this->calculateTotals($data['detalles'], $globalData);
+            
+            // Crear factura
+            $invoice = Invoice::create([
+                'company_id' => $company->id,
+                'branch_id' => $branch->id,
+                'client_id' => $client->id,
+                'tipo_documento' => '01',
+                'serie' => $serie,
+                'correlativo' => $correlativo,
+                'numero_completo' => $serie . '-' . $correlativo,
+                'fecha_emision' => $data['fecha_emision'],
+                'fecha_vencimiento' => $data['fecha_vencimiento'] ?? null,
+                'ubl_version' => $data['ubl_version'] ?? '2.1',
+                'tipo_operacion' => $data['tipo_operacion'] ?? '0101',
+                'moneda' => $data['moneda'] ?? 'PEN',
+                'forma_pago_tipo' => $data['forma_pago_tipo'] ?? 'Contado',
+                'forma_pago_cuotas' => $data['forma_pago_cuotas'] ?? null,
+                'valor_venta' => $totals['valor_venta'],
+                'mto_oper_gravadas' => $tipoOperacion === '0200' ? 0 : $totals['mto_oper_gravadas'],
+                'mto_oper_exoneradas' => $tipoOperacion === '0200' ? 0 : $totals['mto_oper_exoneradas'],
+                'mto_oper_inafectas' => $tipoOperacion === '0200' ? 0 : $totals['mto_oper_inafectas'],
+                'mto_oper_exportacion' => $totals['mto_oper_exportacion'],
+                'mto_oper_gratuitas' => $totals['mto_oper_gratuitas'],
+                'mto_igv_gratuitas' => $totals['mto_igv_gratuitas'],
+                'mto_igv' => $totals['mto_igv'],
+                'mto_isc' => $totals['mto_isc'],
+                'mto_icbper' => $totals['mto_icbper'],
+                'mto_otros_tributos' => $totals['mto_otros_tributos'],
+                'total_impuestos' => $totals['total_impuestos'],
+                'sub_total' => $totals['sub_total'],
+                'mto_imp_venta' => $totals['mto_imp_venta'],
+                'redondeo' => $totals['redondeo'],
+                'total_anticipos' => $totals['total_anticipos'],
+                'descuento_global' => $totals['descuento_global'],
+                'detalles' => $data['detalles'],
+                'leyendas' => $this->generateLegends($totals['mto_imp_venta'], $data['moneda'] ?? 'PEN', $data),
+                'guias' => $data['guias'] ?? null,
+                'documentos_relacionados' => $data['documentos_relacionados'] ?? null,
+                'datos_adicionales' => $data['datos_adicionales'] ?? null,
+                'descuentos' => $data['descuentos'] ?? null,
+                'anticipos' => $data['anticipos'] ?? null,
+                'detraccion' => $data['detraccion'] ?? null,
+                'percepcion' => $data['percepcion'] ?? null,
+                'retencion' => $data['retencion'] ?? null,
+                'usuario_creacion' => $data['usuario_creacion'] ?? null,
+            ]);
+
+            return $invoice;
+        });
+    }
+
+    public function createBoleta(array $data): Boleta
+    {
+        return DB::transaction(function () use ($data) {
+            // Validar y obtener entidades
+            $company = Company::findOrFail($data['company_id']);
+            $branch = Branch::where('company_id', $company->id)
+                           ->where('id', $data['branch_id'])
+                           ->firstOrFail();
+            
+            // Crear o buscar cliente
+            $client = $this->getOrCreateClient($data['client']);
+            
+            // Obtener siguiente correlativo
+            $serie = $data['serie'];
+            $correlativo = $branch->getNextCorrelative('03', $serie);
+            
+            // Preparar datos globales para cálculos
+            $globalData = [
+                'descuentos' => $data['descuentos'] ?? [],
+                'anticipos' => $data['anticipos'] ?? [],
+                'redondeo' => $data['redondeo'] ?? 0,
+            ];
+            
+            // Calcular totales automáticamente
+            $totals = $this->calculateTotals($data['detalles'], $globalData);
+            
+            // Crear boleta
+            $boleta = Boleta::create([
+                'company_id' => $company->id,
+                'branch_id' => $branch->id,
+                'client_id' => $client->id,
+                'tipo_documento' => '03',
+                'serie' => $serie,
+                'correlativo' => $correlativo,
+                'numero_completo' => $serie . '-' . $correlativo,
+                'fecha_emision' => $data['fecha_emision'],
+                'ubl_version' => $data['ubl_version'] ?? '2.1',
+                'tipo_operacion' => $data['tipo_operacion'] ?? '0101',
+                'moneda' => $data['moneda'] ?? 'PEN',
+                'valor_venta' => $totals['valor_venta'],
+                'mto_oper_gravadas' => $totals['mto_oper_gravadas'],
+                'mto_oper_exoneradas' => $totals['mto_oper_exoneradas'],
+                'mto_oper_inafectas' => $totals['mto_oper_inafectas'],
+                'mto_oper_gratuitas' => $totals['mto_oper_gratuitas'],
+                'mto_igv' => $totals['mto_igv'],
+                'mto_isc' => $totals['mto_isc'],
+                'mto_icbper' => $totals['mto_icbper'],
+                'total_impuestos' => $totals['total_impuestos'],
+                'sub_total' => $totals['sub_total'],
+                'mto_imp_venta' => $totals['mto_imp_venta'],
+                'detalles' => $data['detalles'],
+                'leyendas' => $this->generateLegends($totals['mto_imp_venta'], $data['moneda'] ?? 'PEN'),
+                'datos_adicionales' => $data['datos_adicionales'] ?? null,
+                'usuario_creacion' => $data['usuario_creacion'] ?? null,
+            ]);
+
+            return $boleta;
+        });
+    }
+
+    public function sendToSunat($document, string $documentType): array
+    {
+        try {
+            $company = $document->company;
+            $greenterService = new GreenterService($company);
+            
+            // Preparar datos para Greenter
+            $documentData = $this->prepareDocumentData($document, $documentType);
+            
+            // Crear documento Greenter
+            $greenterDocument = null;
+            switch ($documentType) {
+                case 'invoice':
+                    $greenterDocument = $greenterService->createInvoice($documentData);
+                    break;
+                case 'boleta':
+                    $greenterDocument = $greenterService->createInvoice($documentData); // Boleta usa Invoice
+                    break;
+                case 'credit_note':
+                case 'debit_note':
+                    $greenterDocument = $greenterService->createNote($documentData);
+                    break;
+            }
+            
+            if (!$greenterDocument) {
+                throw new Exception('No se pudo crear el documento para Greenter');
+            }
+            
+            // Enviar a SUNAT
+            $result = $greenterService->sendDocument($greenterDocument);
+            
+            // Guardar archivos
+            if ($result['xml']) {
+                $xmlPath = $this->fileService->saveXml($document, $result['xml']);
+                $document->xml_path = $xmlPath;
+            }
+            
+            if ($result['success'] && $result['cdr_zip']) {
+                $cdrPath = $this->fileService->saveCdr($document, $result['cdr_zip']);
+                $document->cdr_path = $cdrPath;
+                
+                $document->estado_sunat = 'ACEPTADO';
+                $document->respuesta_sunat = json_encode([
+                    'id' => $result['cdr_response']->getId(),
+                    'code' => $result['cdr_response']->getCode(),
+                    'description' => $result['cdr_response']->getDescription(),
+                    'notes' => $result['cdr_response']->getNotes(),
+                ]);
+                
+                // Obtener hash del XML
+                $xmlSigned = $greenterService->getXmlSigned($greenterDocument);
+                if ($xmlSigned) {
+                    $document->codigo_hash = $this->extractHashFromXml($xmlSigned);
+                }
+            } else {
+                $document->estado_sunat = 'RECHAZADO';
+                
+                // Manejar diferentes tipos de error
+                $errorCode = 'UNKNOWN';
+                $errorMessage = 'Error desconocido';
+                
+                if (is_object($result['error'])) {
+                    if (method_exists($result['error'], 'getCode')) {
+                        $errorCode = $result['error']->getCode();
+                    } elseif (property_exists($result['error'], 'code')) {
+                        $errorCode = $result['error']->code;
+                    }
+                    
+                    if (method_exists($result['error'], 'getMessage')) {
+                        $errorMessage = $result['error']->getMessage();
+                    } elseif (property_exists($result['error'], 'message')) {
+                        $errorMessage = $result['error']->message;
+                    }
+                }
+                
+                $document->respuesta_sunat = json_encode([
+                    'code' => $errorCode,
+                    'message' => $errorMessage,
+                ]);
+            }
+            
+            $document->save();
+            
+            return [
+                'success' => $result['success'],
+                'document' => $document,
+                'error' => $result['success'] ? null : $result['error']
+            ];
+            
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'document' => $document,
+                'error' => (object)[
+                    'code' => 'EXCEPTION',
+                    'message' => $e->getMessage()
+                ]
+            ];
+        }
+    }
+
+    protected function getOrCreateClient(array $clientData): Client
+    {
+        return Client::firstOrCreate([
+            'tipo_documento' => $clientData['tipo_documento'],
+            'numero_documento' => $clientData['numero_documento'],
+        ], [
+            'razon_social' => $clientData['razon_social'],
+            'nombre_comercial' => $clientData['nombre_comercial'] ?? null,
+            'direccion' => $clientData['direccion'] ?? null,
+            'ubigeo' => $clientData['ubigeo'] ?? null,
+            'distrito' => $clientData['distrito'] ?? null,
+            'provincia' => $clientData['provincia'] ?? null,
+            'departamento' => $clientData['departamento'] ?? null,
+            'telefono' => $clientData['telefono'] ?? null,
+            'email' => $clientData['email'] ?? null,
+        ]);
+    }
+
+    protected function calculateTotals(array &$detalles, array $globalData = []): array
+    {
+        $totals = [
+            'valor_venta' => 0,
+            'mto_oper_gravadas' => 0,
+            'mto_oper_exoneradas' => 0,
+            'mto_oper_inafectas' => 0,
+            'mto_oper_exportacion' => 0,
+            'mto_oper_gratuitas' => 0,
+            'mto_igv_gratuitas' => 0,
+            'mto_igv' => 0,
+            'mto_isc' => 0,
+            'mto_icbper' => 0,
+            'mto_otros_tributos' => 0,
+            'total_impuestos' => 0,
+            'sub_total' => 0,
+            'mto_imp_venta' => 0,
+            'redondeo' => 0,
+        ];
+
+        foreach ($detalles as &$detalle) {
+            $cantidad = $detalle['cantidad'];
+            $mtoValorUnitario = $detalle['mto_valor_unitario'];
+            $porcentajeIgv = $detalle['porcentaje_igv'] ?? 18;
+            $tipAfeIgv = $detalle['tip_afe_igv'];
+
+            // Calcular valores automáticamente - aplicar descuentos por línea primero
+            $mtoValorVenta = round($cantidad * $mtoValorUnitario, 2);
+
+            // Aplicar descuentos por línea si existen
+            if (isset($detalle['descuentos']) && is_array($detalle['descuentos'])) {
+                foreach ($detalle['descuentos'] as $descuento) {
+                    $montoDescuento = $descuento['monto'] ?? 0;
+                    $mtoValorVenta -= $montoDescuento;
+                }
+            }
+
+            // Calcular ISC si existe
+            $isc = 0;
+            $mtoBaseIsc = 0;
+            if (isset($detalle['tip_sis_isc']) && isset($detalle['porcentaje_isc'])) {
+                $mtoBaseIsc = $mtoValorVenta;
+                $isc = round($mtoBaseIsc * ($detalle['porcentaje_isc'] / 100), 2);
+                $detalle['mto_base_isc'] = $mtoBaseIsc;
+                $detalle['isc'] = $isc;
+            }
+
+            // Calcular ICBPER si existe
+            $icbper = 0;
+            if (isset($detalle['factor_icbper'])) {
+                $icbper = round($cantidad * $detalle['factor_icbper'], 2);
+                $detalle['icbper'] = $icbper;
+            }
+
+            // Base para IGV incluye ISC
+            $mtoBaseIgv = $mtoValorVenta + $isc;
+
+            // Calcular IGV según tipo de afectación
+            $igv = 0;
+            if ($tipAfeIgv === '10') { // Gravado - paga IGV
+                $igv = round($mtoBaseIgv * ($porcentajeIgv / 100), 2);
+            }
+            // Para '20' (exonerado), '30' (inafecto), '40' (exportación): IGV = 0 pero base = valor_venta
+
+            $totalImpuestos = $igv + $isc + $icbper;
+            $mtoPrecioUnitario = $mtoValorUnitario;
+            if ($tipAfeIgv === '10') {
+                $mtoPrecioUnitario = round(($mtoValorVenta + $totalImpuestos) / $cantidad, 2);
+            }
+
+            // Manejar operaciones gratuitas
+            if (in_array($tipAfeIgv, ['11', '12', '13', '14', '15', '16', '17', '31', '32', '33', '34', '35', '36'])) {
+                $mtoValorGratuito = $detalle['mto_valor_gratuito'] ?? $detalle['mto_valor_unitario'];
+                $mtoValorVenta = $cantidad * $mtoValorGratuito;
+                $mtoBaseIgv = $mtoValorVenta;
+
+                if (in_array($tipAfeIgv, ['11', '12', '13', '14', '15', '16', '17'])) {
+                    // Calcular IGV EXACTO para cada línea
+                    $igv = round($mtoValorVenta * ($porcentajeIgv / 100), 2);
+
+                    // Guardar en el detalle
+                    $detalle['igv'] = $igv;
+                    $detalle['total_impuestos'] = $igv;
+
+                    // Acumular para el total
+                    $totals['mto_igv_gratuitas'] += $igv;
+                } else {
+                    $igv = 0;
+                    $detalle['igv'] = 0;
+                    $detalle['total_impuestos'] = 0;
+                }
+
+                // Completar datos del detalle
+                $detalle['mto_valor_venta'] = $mtoValorVenta;
+                $detalle['mto_base_igv'] = $mtoBaseIgv;
+                $detalle['mto_valor_gratuito'] = $mtoValorGratuito;
+                $detalle['mto_precio_unitario'] = 0;
+
+                // Acumular operaciones gratuitas
+                $totals['mto_oper_gratuitas'] += $mtoValorVenta;
+
+                // Saltar el resto del cálculo para gratuitas
+                continue;
+            }
+
+            // Completar datos del detalle
+            $detalle['mto_valor_venta'] = $mtoValorVenta;
+            $detalle['mto_base_igv'] = $mtoBaseIgv;
+            $detalle['igv'] = $igv;
+            $detalle['total_impuestos'] = $totalImpuestos;
+            $detalle['mto_precio_unitario'] = $mtoPrecioUnitario;
+            $detalle['isc'] = $isc;
+            $detalle['icbper'] = $icbper;
+
+            // Acumular totales
+            $totals['mto_isc'] += $isc;
+            $totals['mto_icbper'] += $icbper;
+
+            // Clasificar según tipo de afectación IGV
+            switch ($tipAfeIgv) {
+                case '10': // Gravado
+                    $totals['mto_oper_gravadas'] += $mtoValorVenta;
+                    $totals['valor_venta'] += $mtoValorVenta;
+                    $totals['mto_igv'] += $igv;
+                    break;
+                case '20': // Exonerado
+                    $totals['mto_oper_exoneradas'] += $mtoValorVenta;
+                    $totals['valor_venta'] += $mtoValorVenta;
+                    break;
+                case '30': // Inafecto
+                    $totals['mto_oper_inafectas'] += $mtoValorVenta;
+                    $totals['valor_venta'] += $mtoValorVenta;
+                    break;
+                case '40': // Exportación
+                    $totals['mto_oper_exportacion'] += $mtoValorVenta;
+                    $totals['valor_venta'] += $mtoValorVenta;
+                    break;
+            }
+        }
+
+        // Aplicar descuentos globales si existen
+        $descuentoGlobal = 0;
+        if (isset($globalData['descuentos']) && is_array($globalData['descuentos'])) {
+            foreach ($globalData['descuentos'] as $descuento) {
+                $descuentoGlobal += $descuento['monto'] ?? 0;
+            }
+            $totals['mto_oper_gravadas'] -= $descuentoGlobal;
+            $totals['valor_venta'] -= $descuentoGlobal;
+        }
+
+        // Aplicar anticipos si existen
+        $totalAnticipos = 0;
+        if (isset($globalData['anticipos']) && is_array($globalData['anticipos'])) {
+            foreach ($globalData['anticipos'] as $anticipo) {
+                $totalAnticipos += $anticipo['total'] ?? 0;
+            }
+        }
+
+        // Para facturas puramente gratuitas, total_impuestos debe ser 0
+        // Para facturas mixtas o normales, incluir todos los impuestos
+        if ($totals['valor_venta'] == 0 && $totals['mto_oper_gratuitas'] > 0) {
+            // Factura puramente gratuita: total_impuestos = 0
+            $totals['total_impuestos'] = 0;
+            $totals['sub_total'] = 0;
+            $totals['mto_imp_venta'] = 0;
+        } else {
+            // Factura normal o mixta: incluir impuestos normalmente
+            $totals['total_impuestos'] = $totals['mto_igv'] + $totals['mto_isc'] + $totals['mto_icbper'];
+            $totals['sub_total'] = $totals['valor_venta'] + $totals['total_impuestos'];
+            $totals['mto_imp_venta'] = $totals['sub_total'] - $totalAnticipos;
+        }
+
+        // Aplicar redondeo si existe
+        if (isset($globalData['redondeo'])) {
+            $totals['redondeo'] = $globalData['redondeo'];
+            $totals['mto_imp_venta'] += $totals['redondeo'];
+        }
+
+        // Agregar datos adicionales para casos especiales
+        $totals['total_anticipos'] = $totalAnticipos;
+        $totals['descuento_global'] = $descuentoGlobal;
+
+        return $totals;
+    }
+
+    protected function processDetailsForOperationType(array &$detalles, string $tipoOperacion): void
+    {
+        // Para exportaciones (0200), configurar automáticamente los detalles
+        if ($tipoOperacion === '0200') {
+            foreach ($detalles as &$detalle) {
+                $cantidad = $detalle['cantidad'];
+                $valorUnitario = $detalle['mto_valor_unitario'];
+
+                // Configuración automática para exportaciones
+                $detalle['tip_afe_igv'] = '40'; // Exportación
+                $detalle['porcentaje_igv'] = 0;
+
+                // Calcular valores base
+                $valorVenta = $cantidad * $valorUnitario;
+                $detalle['mto_valor_venta'] = $valorVenta;
+                $detalle['mto_base_igv'] = $valorVenta; // Base IGV = valor venta en exportaciones
+                $detalle['igv'] = 0;
+                $detalle['total_impuestos'] = 0;
+                $detalle['mto_precio_unitario'] = $valorUnitario;
+            }
+        }
+    }
+
+    protected function generateLegends(float $total, string $moneda, array $data = []): array
+    {
+        $leyendas = [];
+        
+        // Leyenda 1000: Monto en letras
+        $numeroALetras = $this->convertNumberToWords($total, $moneda);
+        $leyendas[] = [
+            'code' => '1000',
+            'value' => $numeroALetras
+        ];
+        
+        // Leyenda 1002: Transferencias gratuitas
+        if (isset($data['detalles']) && $this->hasGratuitasItems($data['detalles'])) {
+            $leyendas[] = [
+                'code' => '1002',
+                'value' => 'TRANSFERENCIA GRATUITA DE UN BIEN Y/O SERVICIO PRESTADO GRATUITAMENTE'
+            ];
+        }
+        
+        // Leyenda 2000: Percepción
+        if (isset($data['percepcion'])) {
+            $leyendas[] = [
+                'code' => '2000',
+                'value' => 'COMPROBANTE DE PERCEPCIÓN'
+            ];
+        }
+        
+        // Leyenda 2006: Detracción
+        if (isset($data['detraccion'])) {
+            $leyendas[] = [
+                'code' => '2006',
+                'value' => 'Operación sujeta a detracción'
+            ];
+        }
+        
+        return $leyendas;
+    }
+    
+    protected function hasGratuitasItems(array $detalles): bool
+    {
+        foreach ($detalles as $detalle) {
+            $tipAfeIgv = $detalle['tip_afe_igv'] ?? '';
+            if (in_array($tipAfeIgv, ['11', '12', '13', '14', '15', '16', '17', '31', '32', '33', '34', '35', '36'])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    protected function convertNumberToWords(float $numero, string $moneda): string
+    {
+        $monedaName = $moneda === 'PEN' ? 'SOLES' : 'DÓLARES AMERICANOS';
+        $entero = intval($numero);
+        $decimales = intval(($numero - $entero) * 100);
+        
+        // Esta es una implementación básica, se puede mejorar con una librería
+        $letras = $this->numeroALetras($entero);
+        
+        return strtoupper($letras . ' CON ' . sprintf('%02d', $decimales) . '/100 ' . $monedaName);
+    }
+
+    protected function numeroALetras($numero): string
+    {
+        // Implementación básica - se puede reemplazar con una librería más completa
+        if ($numero == 0) return 'CERO';
+        
+        $unidades = ['', 'UNO', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE'];
+        $decenas = ['', '', 'VEINTE', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA'];
+        $especiales = ['DIEZ', 'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISÉIS', 'DIECISIETE', 'DIECIOCHO', 'DIECINUEVE'];
+        
+        // Esta es una implementación muy básica
+        // En producción se debe usar una librería completa
+        return 'NÚMERO EN LETRAS'; // Placeholder
+    }
+
+    protected function prepareDocumentData($document, string $documentType): array
+    {
+        $data = $document->toArray();
+        $data['client'] = $document->client->toArray();
+        
+        // Preparar datos globales
+        $globalData = [
+            'descuentos' => $data['descuentos'] ?? [],
+            'anticipos' => $data['anticipos'] ?? [],
+            'redondeo' => $data['redondeo'] ?? 0,
+        ];
+        
+        // Procesar detalles para completar campos de tributos
+        $detalles = $data['detalles'];
+        $this->calculateTotals($detalles, $globalData); // Esto completa los campos faltantes en los detalles
+        $data['detalles'] = $detalles;
+        
+        return $data;
+    }
+
+    protected function extractHashFromXml(string $xml): ?string
+    {
+        // Extraer el hash del XML firmado
+        preg_match('/<ds:DigestValue[^>]*>([^<]+)<\/ds:DigestValue>/', $xml, $matches);
+        return $matches[1] ?? null;
+    }
+
+    public function createDailySummary(array $data): DailySummary
+    {
+        return DB::transaction(function () use ($data) {
+            // Validar y obtener entidades
+            $company = Company::findOrFail($data['company_id']);
+            $branch = Branch::where('company_id', $company->id)
+                           ->where('id', $data['branch_id'])
+                           ->firstOrFail();
+            
+            // Obtener siguiente correlativo para resúmenes
+            $correlativo = $this->getNextSummaryCorrelative($company->id, $data['fecha_resumen']);
+            
+            // Crear el resumen diario
+            $summary = DailySummary::create([
+                'company_id' => $company->id,
+                'branch_id' => $branch->id,
+                'correlativo' => $correlativo,
+                'fecha_generacion' => $data['fecha_generacion'],
+                'fecha_resumen' => $data['fecha_resumen'],
+                'ubl_version' => $data['ubl_version'] ?? '2.1',
+                'moneda' => $data['moneda'] ?? 'PEN',
+                'estado_proceso' => 'GENERADO',
+                'detalles' => $data['detalles'],
+                'estado_sunat' => 'PENDIENTE',
+                'usuario_creacion' => $data['usuario_creacion'] ?? null,
+            ]);
+
+            return $summary;
+        });
+    }
+
+    public function sendDailySummaryToSunat(DailySummary $summary): array
+    {
+        try {
+            $company = $summary->company;
+            $greenterService = new GreenterService($company);
+            
+            // Preparar datos para Greenter
+            $summaryData = $this->prepareSummaryData($summary);
+            
+            // Crear documento Greenter
+            $greenterSummary = $greenterService->createSummary($summaryData);
+            
+            // Enviar a SUNAT
+            $result = $greenterService->sendSummaryDocument($greenterSummary);
+            
+            if ($result['success']) {
+                // Guardar archivos
+                $xmlPath = $this->fileService->saveXml($summary, $result['xml']);
+                
+                // Actualizar el resumen
+                $summary->update([
+                    'xml_path' => $xmlPath,
+                    'estado_proceso' => 'ENVIADO',
+                    'estado_sunat' => 'PROCESANDO',
+                    'ticket' => $result['ticket'],
+                    'codigo_hash' => $this->extractHashFromXml($result['xml']),
+                ]);
+                
+                return [
+                    'success' => true,
+                    'document' => $summary->fresh(),
+                    'ticket' => $result['ticket']
+                ];
+            } else {
+                // Actualizar estado de error
+                $summary->update([
+                    'estado_proceso' => 'ERROR',
+                    'respuesta_sunat' => json_encode($result['error'])
+                ]);
+                
+                return [
+                    'success' => false,
+                    'document' => $summary->fresh(),
+                    'error' => $result['error']
+                ];
+            }
+            
+        } catch (Exception $e) {
+            $summary->update([
+                'estado_proceso' => 'ERROR',
+                'respuesta_sunat' => json_encode(['message' => $e->getMessage()])
+            ]);
+            
+            return [
+                'success' => false,
+                'document' => $summary->fresh(),
+                'error' => (object)['message' => $e->getMessage()]
+            ];
+        }
+    }
+
+    public function checkSummaryStatus(DailySummary $summary): array
+    {
+        try {
+            if (empty($summary->ticket)) {
+                return [
+                    'success' => false,
+                    'error' => 'No hay ticket disponible para consultar'
+                ];
+            }
+            
+            $company = $summary->company;
+            $greenterService = new GreenterService($company);
+            
+            $result = $greenterService->checkSummaryStatus($summary->ticket);
+            
+            if ($result['success'] && $result['cdr_response']) {
+                // Guardar CDR
+                $cdrPath = $this->fileService->saveCdr($summary, $result['cdr_zip']);
+                
+                // Actualizar estado
+                $summary->update([
+                    'cdr_path' => $cdrPath,
+                    'estado_proceso' => 'COMPLETADO',
+                    'estado_sunat' => 'ACEPTADO',
+                    'respuesta_sunat' => json_encode([
+                        'code' => $result['cdr_response']->getCode(),
+                        'description' => $result['cdr_response']->getDescription()
+                    ])
+                ]);
+                
+                return [
+                    'success' => true,
+                    'document' => $summary->fresh(),
+                    'cdr_response' => $result['cdr_response']
+                ];
+            } else {
+                // Error en la consulta
+                $summary->update([
+                    'estado_proceso' => 'ERROR',
+                    'estado_sunat' => 'RECHAZADO',
+                    'respuesta_sunat' => json_encode($result['error'])
+                ]);
+                
+                return [
+                    'success' => false,
+                    'document' => $summary->fresh(),
+                    'error' => $result['error']
+                ];
+            }
+            
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    public function createSummaryFromBoletas(array $data): DailySummary
+    {
+        return DB::transaction(function () use ($data) {
+            // Obtener las boletas por rango de fechas y empresa
+            $boletas = Boleta::where('company_id', $data['company_id'])
+                            ->where('branch_id', $data['branch_id'])
+                            ->whereDate('fecha_emision', $data['fecha_resumen'])
+                            ->where('estado_sunat', 'PENDIENTE')
+                            ->whereNull('daily_summary_id') // Solo boletas no incluidas en resumen
+                            ->get();
+            
+            if ($boletas->isEmpty()) {
+                throw new Exception('No hay boletas pendientes para la fecha seleccionada');
+            }
+            
+            // Crear detalles del resumen basados en las boletas
+            $detalles = [];
+            foreach ($boletas as $boleta) {
+                $detalles[] = [
+                    'tipo_documento' => $boleta->tipo_documento,
+                    'serie_numero' => $boleta->serie . '-' . $boleta->correlativo,
+                    'estado' => '1', // Estado 1 = Adición
+                    'cliente_tipo' => $boleta->client->tipo_documento ?? '1',
+                    'cliente_numero' => $boleta->client->numero_documento ?? '00000000',
+                    'total' => $boleta->mto_imp_venta,
+                    'mto_oper_gravadas' => $boleta->mto_oper_gravadas,
+                    'mto_oper_exoneradas' => $boleta->mto_oper_exoneradas,
+                    'mto_oper_inafectas' => $boleta->mto_oper_inafectas,
+                    'mto_oper_gratuitas' => $boleta->mto_oper_gratuitas,
+                    'mto_igv' => $boleta->mto_igv,
+                    'mto_isc' => $boleta->mto_isc ?? 0,
+                    'mto_icbper' => $boleta->mto_icbper ?? 0,
+                ];
+            }
+            
+            // Datos para el resumen
+            $summaryData = array_merge($data, [
+                'detalles' => $detalles,
+                'fecha_generacion' => now()->toDateString(),
+            ]);
+            
+            // Crear el resumen
+            $summary = $this->createDailySummary($summaryData);
+            
+            // Vincular boletas al resumen
+            foreach ($boletas as $boleta) {
+                $boleta->update(['daily_summary_id' => $summary->id]);
+            }
+            
+            return $summary;
+        });
+    }
+
+    protected function prepareSummaryData(DailySummary $summary): array
+    {
+        return [
+            'fecha_generacion' => $summary->fecha_generacion->toDateString(),
+            'fecha_resumen' => $summary->fecha_resumen->toDateString(),
+            'correlativo' => $summary->correlativo,
+            'detalles' => $summary->detalles,
+        ];
+    }
+
+    protected function getNextSummaryCorrelative(int $companyId, string $fechaResumen): string
+    {
+        // Obtener el último correlativo para la fecha de resumen
+        $lastSummary = DailySummary::where('company_id', $companyId)
+                                  ->whereDate('fecha_resumen', $fechaResumen)
+                                  ->orderBy('correlativo', 'desc')
+                                  ->first();
+        
+        if (!$lastSummary) {
+            return '001';
+        }
+        
+        $nextCorrelativo = intval($lastSummary->correlativo) + 1;
+        return str_pad($nextCorrelativo, 3, '0', STR_PAD_LEFT);
+    }
+
+    public function createCreditNote(array $data): CreditNote
+    {
+        return DB::transaction(function () use ($data) {
+            // Validar y obtener entidades
+            $company = Company::findOrFail($data['company_id']);
+            $branch = Branch::where('company_id', $company->id)
+                           ->where('id', $data['branch_id'])
+                           ->firstOrFail();
+            
+            // Crear o buscar cliente
+            $client = $this->getOrCreateClient($data['client']);
+            
+            // Obtener siguiente correlativo
+            $serie = $data['serie'];
+            $correlativo = $branch->getNextCorrelative('07', $serie);
+            
+            // Procesar detalles y calcular totales
+            $detalles = $data['detalles'];
+            $globalData = [
+                'descuentos' => $data['descuentos'] ?? [],
+                'anticipos' => $data['anticipos'] ?? [],
+                'redondeo' => $data['redondeo'] ?? 0,
+            ];
+            
+            $this->calculateTotals($detalles, $globalData);
+            
+            // Calcular totales
+            $valorVenta = array_sum(array_column($detalles, 'mto_valor_venta'));
+            $mtoOperGravadas = 0;
+            $mtoOperExoneradas = 0;
+            $mtoOperInafectas = 0;
+            $mtoOperGratuitas = 0;
+            $mtoIgv = 0;
+            $mtoIsc = 0;
+            $mtoIcbper = 0;
+            
+            foreach ($detalles as $detalle) {
+                switch ($detalle['tip_afe_igv']) {
+                    case '10': // Gravado
+                        $mtoOperGravadas += $detalle['mto_valor_venta'];
+                        $mtoIgv += $detalle['igv'];
+                        break;
+                    case '20': // Exonerado
+                        $mtoOperExoneradas += $detalle['mto_valor_venta'];
+                        break;
+                    case '30': // Inafecto
+                        $mtoOperInafectas += $detalle['mto_valor_venta'];
+                        break;
+                    case '40': // Exportación
+                        // Se maneja como inafecto para efectos internos
+                        $mtoOperInafectas += $detalle['mto_valor_venta'];
+                        break;
+                    default:
+                        if (isset($detalle['mto_valor_gratuito'])) {
+                            $mtoOperGratuitas += $detalle['mto_valor_gratuito'];
+                        }
+                        break;
+                }
+                
+                if (isset($detalle['isc'])) {
+                    $mtoIsc += $detalle['isc'];
+                }
+                
+                if (isset($detalle['icbper'])) {
+                    $mtoIcbper += $detalle['icbper'];
+                }
+            }
+            
+            $totalImpuestos = $mtoIgv + $mtoIsc + $mtoIcbper;
+            $subTotal = $valorVenta + $totalImpuestos;
+            $mtoImpVenta = $subTotal;
+            
+            // Generar leyenda automática si no se proporciona
+            $leyendas = $data['leyendas'] ?? [];
+            if (empty($leyendas)) {
+                $leyendas[] = [
+                    'code' => '1000',
+                    'value' => $this->convertirNumeroALetras($mtoImpVenta, $data['moneda'] ?? 'PEN')
+                ];
+            }
+            
+            // Crear la nota de crédito
+            $creditNote = CreditNote::create([
+                'company_id' => $company->id,
+                'branch_id' => $branch->id,
+                'client_id' => $client->id,
+                'tipo_documento' => '07',
+                'serie' => $serie,
+                'correlativo' => $correlativo,
+                'tipo_doc_afectado' => $data['tipo_doc_afectado'],
+                'num_doc_afectado' => $data['num_doc_afectado'],
+                'cod_motivo' => $data['cod_motivo'],
+                'des_motivo' => $data['des_motivo'],
+                'fecha_emision' => $data['fecha_emision'],
+                'ubl_version' => $data['ubl_version'] ?? '2.1',
+                'moneda' => $data['moneda'] ?? 'PEN',
+                'valor_venta' => $valorVenta,
+                'mto_oper_gravadas' => $mtoOperGravadas,
+                'mto_oper_exoneradas' => $mtoOperExoneradas,
+                'mto_oper_inafectas' => $mtoOperInafectas,
+                'mto_oper_gratuitas' => $mtoOperGratuitas,
+                'mto_igv' => $mtoIgv,
+                'mto_isc' => $mtoIsc,
+                'mto_icbper' => $mtoIcbper,
+                'total_impuestos' => $totalImpuestos,
+                'mto_imp_venta' => $mtoImpVenta,
+                'detalles' => $detalles,
+                'leyendas' => $leyendas,
+                'guias' => $data['guias'] ?? [],
+                'datos_adicionales' => $data['datos_adicionales'] ?? [],
+                'estado_sunat' => 'PENDIENTE',
+                'usuario_creacion' => $data['usuario_creacion'] ?? null,
+            ]);
+            
+            return $creditNote;
+        });
+    }
+
+    public function createDebitNote(array $data): DebitNote
+    {
+        return DB::transaction(function () use ($data) {
+            // Validar y obtener entidades
+            $company = Company::findOrFail($data['company_id']);
+            $branch = Branch::where('company_id', $company->id)
+                           ->where('id', $data['branch_id'])
+                           ->firstOrFail();
+            
+            // Crear o buscar cliente
+            $client = $this->getOrCreateClient($data['client']);
+            
+            // Obtener siguiente correlativo
+            $serie = $data['serie'];
+            $correlativo = $branch->getNextCorrelative('08', $serie);
+            
+            // Procesar detalles y calcular totales
+            $detalles = $data['detalles'];
+            $globalData = [
+                'descuentos' => $data['descuentos'] ?? [],
+                'anticipos' => $data['anticipos'] ?? [],
+                'redondeo' => $data['redondeo'] ?? 0,
+            ];
+            
+            $this->calculateTotals($detalles, $globalData);
+            
+            // Calcular totales
+            $valorVenta = array_sum(array_column($detalles, 'mto_valor_venta'));
+            $mtoOperGravadas = 0;
+            $mtoOperExoneradas = 0;
+            $mtoOperInafectas = 0;
+            $mtoOperGratuitas = 0;
+            $mtoIgv = 0;
+            $mtoIsc = 0;
+            $mtoIcbper = 0;
+            
+            foreach ($detalles as $detalle) {
+                switch ($detalle['tip_afe_igv']) {
+                    case '10': // Gravado
+                        $mtoOperGravadas += $detalle['mto_valor_venta'];
+                        $mtoIgv += $detalle['igv'];
+                        break;
+                    case '20': // Exonerado
+                        $mtoOperExoneradas += $detalle['mto_valor_venta'];
+                        break;
+                    case '30': // Inafecto
+                        $mtoOperInafectas += $detalle['mto_valor_venta'];
+                        break;
+                    case '40': // Exportación
+                        $mtoOperInafectas += $detalle['mto_valor_venta'];
+                        break;
+                    default:
+                        if (isset($detalle['mto_valor_gratuito'])) {
+                            $mtoOperGratuitas += $detalle['mto_valor_gratuito'];
+                        }
+                        break;
+                }
+                
+                if (isset($detalle['isc'])) {
+                    $mtoIsc += $detalle['isc'];
+                }
+                
+                if (isset($detalle['icbper'])) {
+                    $mtoIcbper += $detalle['icbper'];
+                }
+            }
+            
+            $totalImpuestos = $mtoIgv + $mtoIsc + $mtoIcbper;
+            $subTotal = $valorVenta + $totalImpuestos;
+            $mtoImpVenta = $subTotal;
+            
+            // Generar leyenda automática si no se proporciona
+            $leyendas = $data['leyendas'] ?? [];
+            if (empty($leyendas)) {
+                $leyendas[] = [
+                    'code' => '1000',
+                    'value' => $this->convertirNumeroALetras($mtoImpVenta, $data['moneda'] ?? 'PEN')
+                ];
+            }
+            
+            // Crear la nota de débito
+            $debitNote = DebitNote::create([
+                'company_id' => $company->id,
+                'branch_id' => $branch->id,
+                'client_id' => $client->id,
+                'tipo_documento' => '08',
+                'serie' => $serie,
+                'correlativo' => $correlativo,
+                'tipo_doc_afectado' => $data['tipo_doc_afectado'],
+                'num_doc_afectado' => $data['num_doc_afectado'],
+                'cod_motivo' => $data['cod_motivo'],
+                'des_motivo' => $data['des_motivo'],
+                'fecha_emision' => $data['fecha_emision'],
+                'ubl_version' => $data['ubl_version'] ?? '2.1',
+                'moneda' => $data['moneda'] ?? 'PEN',
+                'valor_venta' => $valorVenta,
+                'mto_oper_gravadas' => $mtoOperGravadas,
+                'mto_oper_exoneradas' => $mtoOperExoneradas,
+                'mto_oper_inafectas' => $mtoOperInafectas,
+                'mto_oper_gratuitas' => $mtoOperGratuitas,
+                'mto_igv' => $mtoIgv,
+                'mto_isc' => $mtoIsc,
+                'mto_icbper' => $mtoIcbper,
+                'total_impuestos' => $totalImpuestos,
+                'mto_imp_venta' => $mtoImpVenta,
+                'detalles' => $detalles,
+                'leyendas' => $leyendas,
+                'datos_adicionales' => $data['datos_adicionales'] ?? [],
+                'estado_sunat' => 'PENDIENTE',
+                'usuario_creacion' => $data['usuario_creacion'] ?? null,
+            ]);
+            
+            return $debitNote;
+        });
+    }
+
+    public function createDispatchGuide(array $data): DispatchGuide
+    {
+        return DB::transaction(function () use ($data) {
+            // Validar y obtener entidades
+            $company = Company::findOrFail($data['company_id']);
+            $branch = Branch::where('company_id', $company->id)
+                           ->where('id', $data['branch_id'])
+                           ->firstOrFail();
+            
+            // Crear o buscar destinatario
+            $destinatario = $this->getOrCreateClient($data['destinatario']);
+            
+            // Obtener siguiente correlativo
+            $serie = $data['serie'];
+            $correlativo = $branch->getNextCorrelative('09', $serie);
+            
+            // Crear la guía de remisión
+            $dispatchGuide = DispatchGuide::create([
+                'company_id' => $company->id,
+                'branch_id' => $branch->id,
+                'destinatario_id' => $destinatario->id,
+                'tipo_documento' => '09',
+                'serie' => $serie,
+                'correlativo' => $correlativo,
+                'fecha_emision' => $data['fecha_emision'],
+                'version' => $data['version'] ?? '2022',
+                
+                // Datos del envío
+                'cod_traslado' => $data['cod_traslado'],
+                'des_traslado' => $data['des_traslado'] ?? null,
+                'mod_traslado' => $data['mod_traslado'],
+                'fec_traslado' => $data['fec_traslado'],
+                'peso_total' => $data['peso_total'],
+                'und_peso_total' => $data['und_peso_total'],
+                'num_bultos' => $data['num_bultos'] ?? null,
+                
+                // Direcciones
+                'partida_ubigeo' => $data['partida_ubigeo'],
+                'partida_direccion' => $data['partida_direccion'],
+                'llegada_ubigeo' => $data['llegada_ubigeo'],
+                'llegada_direccion' => $data['llegada_direccion'],
+                
+                // Datos de transporte (según modalidad)
+                'transportista_tipo_doc' => $data['transportista']['tipo_doc'] ?? null,
+                'transportista_num_doc' => $data['transportista']['num_doc'] ?? null,
+                'transportista_razon_social' => $data['transportista']['razon_social'] ?? null,
+                'transportista_nro_mtc' => $data['transportista']['nro_mtc'] ?? null,
+                
+                'conductor_tipo' => $data['conductor']['tipo'] ?? null,
+                'conductor_tipo_doc' => $data['conductor']['tipo_doc'] ?? null,
+                'conductor_num_doc' => $data['conductor']['num_doc'] ?? null,
+                'conductor_licencia' => $data['conductor']['licencia'] ?? null,
+                'conductor_nombres' => $data['conductor']['nombres'] ?? null,
+                'conductor_apellidos' => $data['conductor']['apellidos'] ?? null,
+                
+                'vehiculo_placa' => $data['vehiculo_placa'] ?? null,
+                'vehiculos_secundarios' => $data['vehiculos_secundarios'] ?? [],
+                
+                // Detalles y observaciones
+                'detalles' => $data['detalles'],
+                'observaciones' => $data['observaciones'] ?? null,
+                
+                'estado_sunat' => 'PENDIENTE',
+                'usuario_creacion' => $data['usuario_creacion'] ?? null,
+            ]);
+            
+            return $dispatchGuide;
+        });
+    }
+
+    public function sendDispatchGuideToSunat(DispatchGuide $guide): array
+    {
+        try {
+            $company = $guide->company;
+            $greenterService = new GreenterService($company);
+            
+            // Preparar datos para Greenter
+            $guideData = $this->prepareDispatchGuideData($guide);
+            
+            // Crear documento Greenter
+            $greenterDespatch = $greenterService->createDespatch($guideData);
+            
+            // Enviar a SUNAT
+            $result = $greenterService->sendDespatchDocument($greenterDespatch);
+            
+            if ($result['success']) {
+                // Guardar archivos
+                $xmlPath = $this->fileService->saveXml($guide, $result['xml']);
+                
+                // Actualizar la guía
+                $guide->update([
+                    'xml_path' => $xmlPath,
+                    'estado_sunat' => 'PROCESANDO',
+                    'ticket' => $result['ticket'],
+                    'codigo_hash' => $this->extractHashFromXml($result['xml']),
+                ]);
+                
+                return [
+                    'success' => true,
+                    'document' => $guide->fresh(),
+                    'ticket' => $result['ticket']
+                ];
+            } else {
+                // Actualizar estado de error
+                $guide->update([
+                    'respuesta_sunat' => json_encode($result['error'])
+                ]);
+                
+                return [
+                    'success' => false,
+                    'document' => $guide->fresh(),
+                    'error' => $result['error']
+                ];
+            }
+            
+        } catch (Exception $e) {
+            $guide->update([
+                'respuesta_sunat' => json_encode(['message' => $e->getMessage()])
+            ]);
+            
+            return [
+                'success' => false,
+                'document' => $guide->fresh(),
+                'error' => (object)['message' => $e->getMessage()]
+            ];
+        }
+    }
+
+    public function checkDispatchGuideStatus(DispatchGuide $guide): array
+    {
+        try {
+            if (empty($guide->ticket)) {
+                return [
+                    'success' => false,
+                    'error' => 'No hay ticket disponible para consultar'
+                ];
+            }
+            
+            $company = $guide->company;
+            $greenterService = new GreenterService($company);
+            
+            $result = $greenterService->checkDespatchStatus($guide->ticket);
+            
+            if ($result['success'] && $result['cdr_response']) {
+                // Guardar CDR
+                $cdrPath = $this->fileService->saveCdr($guide, $result['cdr_zip']);
+                
+                // Actualizar estado
+                $guide->update([
+                    'cdr_path' => $cdrPath,
+                    'estado_sunat' => 'ACEPTADO',
+                    'respuesta_sunat' => json_encode([
+                        'code' => $result['cdr_response']->getCode(),
+                        'description' => $result['cdr_response']->getDescription()
+                    ])
+                ]);
+                
+                return [
+                    'success' => true,
+                    'document' => $guide->fresh(),
+                    'cdr_response' => $result['cdr_response']
+                ];
+            } else {
+                // Error en la consulta
+                $guide->update([
+                    'estado_sunat' => 'RECHAZADO',
+                    'respuesta_sunat' => json_encode($result['error'])
+                ]);
+                
+                return [
+                    'success' => false,
+                    'document' => $guide->fresh(),
+                    'error' => $result['error']
+                ];
+            }
+            
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    protected function prepareDispatchGuideData(DispatchGuide $guide): array
+    {
+        $data = [
+            'tipo_documento' => $guide->tipo_documento,
+            'serie' => $guide->serie,
+            'correlativo' => $guide->correlativo,
+            'fecha_emision' => $guide->fecha_emision->format('Y-m-d'),
+            'version' => $guide->version,
+            
+            // Destinatario
+            'destinatario' => [
+                'tipo_documento' => $guide->destinatario->tipo_documento,
+                'numero_documento' => $guide->destinatario->numero_documento,
+                'razon_social' => $guide->destinatario->razon_social,
+                'direccion' => $guide->destinatario->direccion,
+                'ubigeo' => $guide->destinatario->ubigeo,
+                'distrito' => $guide->destinatario->distrito,
+                'provincia' => $guide->destinatario->provincia,
+                'departamento' => $guide->destinatario->departamento,
+                'telefono' => $guide->destinatario->telefono,
+                'email' => $guide->destinatario->email,
+            ],
+            
+            // Datos del envío
+            'cod_traslado' => $guide->cod_traslado,
+            'mod_traslado' => $guide->mod_traslado,
+            'fec_traslado' => $guide->fec_traslado->format('Y-m-d'),
+            'peso_total' => $guide->peso_total,
+            'und_peso_total' => $guide->und_peso_total,
+            'num_bultos' => $guide->num_bultos,
+            
+            // Direcciones
+            'partida_ubigeo' => $guide->partida_ubigeo,
+            'partida_direccion' => $guide->partida_direccion,
+            'llegada_ubigeo' => $guide->llegada_ubigeo,
+            'llegada_direccion' => $guide->llegada_direccion,
+            
+            // Detalles
+            'detalles' => $guide->detalles,
+            'observaciones' => $guide->observaciones,
+        ];
+        
+        // Agregar datos de transporte según modalidad
+        if ($guide->mod_traslado === '01') {
+            // Transporte público
+            $data['transportista'] = [
+                'tipo_doc' => $guide->transportista_tipo_doc,
+                'num_doc' => $guide->transportista_num_doc,
+                'razon_social' => $guide->transportista_razon_social,
+                'nro_mtc' => $guide->transportista_nro_mtc,
+            ];
+        } else {
+            // Transporte privado
+            $data['conductor'] = [
+                'tipo' => $guide->conductor_tipo,
+                'tipo_doc' => $guide->conductor_tipo_doc,
+                'num_doc' => $guide->conductor_num_doc,
+                'licencia' => $guide->conductor_licencia,
+                'nombres' => $guide->conductor_nombres,
+                'apellidos' => $guide->conductor_apellidos,
+            ];
+            
+            $data['vehiculo_placa'] = $guide->vehiculo_placa;
+            $data['vehiculos_secundarios'] = $guide->vehiculos_secundarios;
+        }
+        
+        return $data;
+    }
+
+    // Métodos para generación de PDFs
+    public function generateDocumentPdf($document, string $documentType): void
+    {
+        try {
+            $document = $document->load(['company', 'branch', 'client']);
+            
+            $pdfContent = match($documentType) {
+                'invoice' => $this->pdfService->generateInvoicePdf($document),
+                'boleta' => $this->pdfService->generateBoletaPdf($document),
+                'credit-note' => $this->pdfService->generateCreditNotePdf($document),
+                'debit-note' => $this->pdfService->generateDebitNotePdf($document),
+                'dispatch-guide' => $this->pdfService->generateDispatchGuidePdf($document),
+                default => throw new Exception("Tipo de documento no soportado: $documentType")
+            };
+
+            // Guardar el PDF
+            $pdfPath = $this->fileService->savePdf($document, $pdfContent);
+            
+            // Actualizar la ruta del PDF en el documento
+            $document->update(['pdf_path' => $pdfPath]);
+
+        } catch (Exception $e) {
+            // Log del error pero no interrumpir el flujo
+            logger()->error("Error generando PDF para $documentType: " . $e->getMessage());
+        }
+    }
+
+    public function generateInvoicePdf(Invoice $invoice): void
+    {
+        $this->generateDocumentPdf($invoice, 'invoice');
+    }
+
+    public function generateBoletaPdf(Boleta $boleta): void  
+    {
+        $this->generateDocumentPdf($boleta, 'boleta');
+    }
+
+    public function generateCreditNotePdf(CreditNote $creditNote): void
+    {
+        $this->generateDocumentPdf($creditNote, 'credit-note');
+    }
+
+    public function generateDebitNotePdf(DebitNote $debitNote): void
+    {
+        $this->generateDocumentPdf($debitNote, 'debit-note');
+    }
+
+    public function generateDispatchGuidePdf(DispatchGuide $dispatchGuide): void
+    {
+        $this->generateDocumentPdf($dispatchGuide, 'dispatch-guide');
+    }
+}

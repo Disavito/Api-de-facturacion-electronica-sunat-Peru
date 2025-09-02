@@ -1,0 +1,1032 @@
+{
+    "info": {
+        "name": "API SUNAT Facturación Electrónica",
+        "description": "Ejemplos de endpoints para la API de facturación electrónica SUNAT",
+        "version": "1.0.0"
+    },
+    "examples": {
+        "crear_factura": {
+            "method": "POST",
+            "url": "http://localhost:8000/api/v1/invoices",
+            "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            "body": {
+                "company_id": 1,
+                "branch_id": 1,
+                "serie": "F001",
+                "fecha_emision": "2025-09-01",
+                "fecha_vencimiento": "2025-09-01",
+                "moneda": "PEN",
+                "forma_pago_tipo": "Contado",
+                "tipo_operacion": "0101",
+                "client": {
+                    "tipo_documento": "6",
+                    "numero_documento": "20100070970",
+                    "razon_social": "CLIENTE EMPRESA S.A.C.",
+                    "nombre_comercial": "CLIENTE COMERCIAL",
+                    "direccion": "AV. LOS PINOS 456 - LIMA",
+                    "ubigeo": "150101",
+                    "distrito": "LIMA",
+                    "provincia": "LIMA",
+                    "departamento": "LIMA",
+                    "telefono": "01-7654321",
+                    "email": "cliente@empresa.com"
+                },
+                "detalles": [
+                    {
+                        "codigo": "PROD001",
+                        "descripcion": "PRODUCTO DE PRUEBA NÚMERO 1",
+                        "unidad": "NIU",
+                        "cantidad": 2,
+                        "mto_valor_unitario": 100.0,
+                        "porcentaje_igv": 18,
+                        "tip_afe_igv": "10",
+                        "codigo_producto_sunat": "10000000"
+                    },
+                    {
+                        "codigo": "SERV001",
+                        "descripcion": "SERVICIO DE CONSULTORÍA",
+                        "unidad": "ZZ",
+                        "cantidad": 1,
+                        "mto_valor_unitario": 500.0,
+                        "porcentaje_igv": 18,
+                        "tip_afe_igv": "10"
+                    }
+                ],
+                "usuario_creacion": "API_USER"
+            }
+        },
+        "crear_factura_credito": {
+            "method": "POST",
+            "url": "http://localhost:8000/api/v1/invoices",
+            "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            "body": {
+                "company_id": 1,
+                "branch_id": 1,
+                "serie": "F001",
+                "fecha_emision": "2025-09-01",
+                "fecha_vencimiento": "2025-10-01",
+                "moneda": "PEN",
+                "forma_pago_tipo": "Credito",
+                "forma_pago_cuotas": [
+                    {
+                        "moneda": "PEN",
+                        "monto": 354.0,
+                        "fecha_pago": "2025-10-01"
+                    }
+                ],
+                "client": {
+                    "tipo_documento": "6",
+                    "numero_documento": "20100070970",
+                    "razon_social": "CLIENTE EMPRESA S.A.C.",
+                    "direccion": "AV. LOS PINOS 456"
+                },
+                "detalles": [
+                    {
+                        "codigo": "PROD002",
+                        "descripcion": "LAPTOP DELL INSPIRON 15",
+                        "unidad": "NIU",
+                        "cantidad": 1,
+                        "mto_valor_unitario": 300.0,
+                        "porcentaje_igv": 18,
+                        "tip_afe_igv": "10"
+                    }
+                ]
+            }
+        },
+        "crear_factura_mixta": {
+            "method": "POST",
+            "url": "http://localhost:8000/api/v1/invoices",
+            "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            "body": {
+                "company_id": 1,
+                "branch_id": 1,
+                "serie": "F002",
+                "fecha_emision": "2025-09-01",
+                "moneda": "PEN",
+                "forma_pago_tipo": "Contado",
+                "client": {
+                    "tipo_documento": "6",
+                    "numero_documento": "20148092282",
+                    "razon_social": "EMPRESA MIXTA S.A.C.",
+                    "direccion": "AV. INDUSTRIAL 456 - LIMA"
+                },
+                "detalles": [
+                    {
+                        "codigo": "GRAVADO01",
+                        "descripcion": "PRODUCTO GRAVADO CON IGV",
+                        "unidad": "NIU",
+                        "cantidad": 2,
+                        "mto_valor_unitario": 100.0,
+                        "porcentaje_igv": 18,
+                        "tip_afe_igv": "10"
+                    },
+                    {
+                        "codigo": "EXONERADO01",
+                        "descripcion": "PRODUCTO EXONERADO DE IGV",
+                        "unidad": "KG",
+                        "cantidad": 5,
+                        "mto_valor_unitario": 50.0,
+                        "porcentaje_igv": 0,
+                        "tip_afe_igv": "20"
+                    },
+                    {
+                        "codigo": "INAFECTO01",
+                        "descripcion": "PRODUCTO INAFECTO AL IGV",
+                        "unidad": "NIU",
+                        "cantidad": 3,
+                        "mto_valor_unitario": 30.0,
+                        "porcentaje_igv": 0,
+                        "tip_afe_igv": "30"
+                    }
+                ]
+            }
+        },
+        "crear_boleta_simple": {
+            "method": "POST",
+            "url": "http://localhost:8000/api/v1/boletas",
+            "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            "body": {
+                "company_id": 1,
+                "branch_id": 1,
+                "serie": "B001",
+                "fecha_emision": "2025-09-01",
+                "moneda": "PEN",
+                "forma_pago_tipo": "Contado",
+                "client": {
+                    "tipo_documento": "1",
+                    "numero_documento": "12345678",
+                    "razon_social": "JUAN PÉREZ GÓMEZ"
+                },
+                "detalles": [
+                    {
+                        "codigo": "PROD001",
+                        "descripcion": "PRODUCTO DE PRUEBA",
+                        "unidad": "NIU",
+                        "cantidad": 2,
+                        "mto_valor_unitario": 100.0,
+                        "porcentaje_igv": 18,
+                        "tip_afe_igv": "10"
+                    }
+                ],
+                "usuario_creacion": "API_USER"
+            }
+        },
+        "crear_boleta_icbper": {
+            "method": "POST",
+            "url": "http://localhost:8000/api/v1/boletas",
+            "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            "body": {
+                "company_id": 1,
+                "branch_id": 1,
+                "serie": "B001",
+                "fecha_emision": "2025-09-01",
+                "moneda": "PEN",
+                "forma_pago_tipo": "Contado",
+                "client": {
+                    "tipo_documento": "1",
+                    "numero_documento": "74002155",
+                    "razon_social": "JUAN BRAIN"
+                },
+                "detalles": [
+                    {
+                        "codigo": "P001",
+                        "descripcion": "PRODUCTO 1",
+                        "unidad": "NIU",
+                        "cantidad": 2,
+                        "mto_valor_unitario": 100.0,
+                        "porcentaje_igv": 18,
+                        "tip_afe_igv": "10"
+                    },
+                    {
+                        "codigo": "P002",
+                        "descripcion": "BOLSA DE PLASTICO",
+                        "unidad": "NIU",
+                        "cantidad": 4,
+                        "mto_valor_unitario": 0.05,
+                        "porcentaje_igv": 18,
+                        "tip_afe_igv": "10",
+                        "icbper": 0.8,
+                        "factor_icbper": 0.2
+                    }
+                ],
+                "icbper": 0.8,
+                "redondeo": 0.04,
+                "usuario_creacion": "API_USER"
+            }
+        },
+        "crear_nota_credito": {
+            "method": "POST",
+            "url": "http://localhost:8000/api/v1/credit-notes",
+            "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            "body": {
+                "company_id": 1,
+                "branch_id": 1,
+                "serie": "FC01",
+                "fecha_emision": "2025-09-01",
+                "moneda": "PEN",
+                "tipo_doc_afectado": "01",
+                "num_doc_afectado": "F001-000001",
+                "cod_motivo": "07",
+                "des_motivo": "DEVOLUCION POR ITEM",
+                "client": {
+                    "tipo_documento": "6",
+                    "numero_documento": "20000000001",
+                    "razon_social": "EMPRESA 1 S.A.C."
+                },
+                "detalles": [
+                    {
+                        "codigo": "C023",
+                        "descripcion": "PROD 1",
+                        "unidad": "NIU",
+                        "cantidad": 2,
+                        "mto_valor_unitario": 50.0,
+                        "porcentaje_igv": 18,
+                        "tip_afe_igv": "10"
+                    },
+                    {
+                        "codigo": "C02",
+                        "descripcion": "PROD 2",
+                        "unidad": "NIU",
+                        "cantidad": 2,
+                        "mto_valor_unitario": 50.0,
+                        "porcentaje_igv": 18,
+                        "tip_afe_igv": "10"
+                    }
+                ],
+                "guias": [
+                    {
+                        "tipo_doc": "09",
+                        "nro_doc": "0001-213"
+                    }
+                ],
+                "usuario_creacion": "API_USER"
+            }
+        },
+        "listar_facturas": {
+            "method": "GET",
+            "url": "http://localhost:8000/api/v1/invoices",
+            "headers": {
+                "Accept": "application/json"
+            },
+            "query_params": {
+                "company_id": 1,
+                "branch_id": 1,
+                "estado_sunat": "PENDIENTE",
+                "per_page": 10
+            }
+        },
+        "ver_factura": {
+            "method": "GET",
+            "url": "http://localhost:8000/api/v1/invoices/1",
+            "headers": {
+                "Accept": "application/json"
+            }
+        },
+        "enviar_factura_sunat": {
+            "method": "POST",
+            "url": "http://localhost:8000/api/v1/invoices/1/send-sunat",
+            "headers": {
+                "Accept": "application/json"
+            }
+        },
+        "descargar_xml": {
+            "method": "GET",
+            "url": "http://localhost:8000/api/v1/invoices/1/download-xml",
+            "headers": {
+                "Accept": "application/octet-stream"
+            }
+        },
+        "descargar_cdr": {
+            "method": "GET",
+            "url": "http://localhost:8000/api/v1/invoices/1/download-cdr",
+            "headers": {
+                "Accept": "application/octet-stream"
+            }
+        },
+        "crear_factura_detraccion": {
+            "method": "POST",
+            "url": "http://localhost:8000/api/v1/invoices",
+            "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            "body": {
+                "company_id": 1,
+                "branch_id": 1,
+                "serie": "F001",
+                "fecha_emision": "2025-09-01",
+                "moneda": "PEN",
+                "forma_pago_tipo": "Contado",
+                "tipo_operacion": "1001",
+                "client": {
+                    "tipo_documento": "6",
+                    "numero_documento": "20000000001",
+                    "razon_social": "EMPRESA 1 S.A.C."
+                },
+                "detalles": [
+                    {
+                        "codigo": "P001",
+                        "descripcion": "CARNES Y DESPOJOS COMESTIBLES",
+                        "unidad": "ZZ",
+                        "cantidad": 4,
+                        "mto_valor_unitario": 200.0,
+                        "porcentaje_igv": 18,
+                        "tip_afe_igv": "10"
+                    }
+                ],
+                "detraccion": {
+                    "codigo_bien_servicio": "001",
+                    "codigo_medio_pago": "001",
+                    "cuenta_banco": "00000000000000000000",
+                    "porcentaje": 4,
+                    "monto": 40.0
+                },
+                "leyendas": [
+                    {
+                        "code": "1000",
+                        "value": "SON NOVECIENTOS CUARENTA Y CUATRO CON OO/100 SOLES"
+                    },
+                    {
+                        "code": "2006",
+                        "value": "Operación sujeta a detracción"
+                    }
+                ],
+                "usuario_creacion": "API_USER"
+            }
+        },
+        "crear_factura_compleja": {
+            "method": "POST",
+            "url": "http://localhost:8000/api/v1/invoices",
+            "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            "body": {
+                "company_id": 1,
+                "branch_id": 1,
+                "serie": "F003",
+                "fecha_emision": "2025-09-01",
+                "fecha_vencimiento": "2025-09-30",
+                "moneda": "PEN",
+                "forma_pago_tipo": "Credito",
+                "forma_pago_cuotas": [
+                    {
+                        "moneda": "PEN",
+                        "monto": 590.0,
+                        "fecha_pago": "2025-10-15"
+                    },
+                    {
+                        "moneda": "PEN",
+                        "monto": 590.0,
+                        "fecha_pago": "2025-11-15"
+                    }
+                ],
+                "client": {
+                    "tipo_documento": "6",
+                    "numero_documento": "20148092282",
+                    "razon_social": "EMPRESA MULTISERVICIOS S.A.C.",
+                    "direccion": "JR. NIQUEL MZA. F LOTE. 3 URB. INDUSTRIAL INFANTAS",
+                    "ubigeo": "150101",
+                    "email": "contacto@multiservicios.com",
+                    "telefono": "01-445566"
+                },
+                "detalles": [
+                    {
+                        "codigo": "SERV001",
+                        "descripcion": "SERVICIO DE CONSULTORIA ESPECIALIZADA",
+                        "unidad": "ZZ",
+                        "cantidad": 1,
+                        "mto_valor_unitario": 1000.0,
+                        "porcentaje_igv": 18,
+                        "tip_afe_igv": "10"
+                    }
+                ],
+                "anticipos": [
+                    {
+                        "tipo_doc_rel": "02",
+                        "nro_doc_rel": "A001-001",
+                        "monto_anticipado": 200.0,
+                        "moneda": "PEN"
+                    }
+                ],
+                "leyendas": [
+                    {
+                        "code": "1000",
+                        "value": "MIL CIENTO OCHENTA CON OO/100 SOLES"
+                    }
+                ],
+                "usuario_creacion": "API_USER"
+            }
+        },
+        "crear_factura_exportacion": {
+            "method": "POST",
+            "url": "http://localhost:8000/api/v1/invoices",
+            "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            "body": {
+                "company_id": 1,
+                "branch_id": 1,
+                "serie": "F001",
+                "fecha_emision": "2025-09-01",
+                "moneda": "USD",
+                "forma_pago_tipo": "Contado",
+                "tipo_operacion": "0200",
+                "client": {
+                    "tipo_documento": "0",
+                    "numero_documento": "-",
+                    "razon_social": "CLIENTE EXTRANJERO"
+                },
+                "detalles": [
+                    {
+                        "codigo": "PROD001",
+                        "descripcion": "Producto de exportación",
+                        "unidad": "KGM",
+                        "cantidad": 100,
+                        "mto_valor_unitario": 10.0
+                    }
+                ],
+                "leyendas": [
+                    {
+                        "code": "1000",
+                        "value": "MIL CON OO/100 DOLARES AMERICANOS"
+                    }
+                ],
+                "usuario_creacion": "API_USER"
+            }
+        },
+        "crear_factura_isc": {
+            "method": "POST",
+            "url": "http://localhost:8000/api/v1/invoices",
+            "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            "body": {
+                "company_id": 1,
+                "branch_id": 1,
+                "serie": "F001",
+                "fecha_emision": "2025-09-01",
+                "moneda": "PEN",
+                "forma_pago_tipo": "Contado",
+                "client": {
+                    "tipo_documento": "6",
+                    "numero_documento": "20000000001",
+                    "razon_social": "EMPRESA 1 S.A.C."
+                },
+                "detalles": [
+                    {
+                        "codigo": "P001",
+                        "descripcion": "CIGARRILLOS - PRODUCTO CON ISC",
+                        "unidad": "NIU",
+                        "cantidad": 2,
+                        "mto_valor_unitario": 100.0,
+                        "porcentaje_igv": 18,
+                        "tip_afe_igv": "10",
+                        "isc": 34.0,
+                        "tip_sis_isc": "01",
+                        "porcentaje_isc": 17.0,
+                        "mto_base_isc": 200.0
+                    }
+                ],
+                "leyendas": [
+                    {
+                        "code": "1000",
+                        "value": "DOSCIENTOS SETENTA Y SEIS CON 12/100 SOLES"
+                    }
+                ],
+                "usuario_creacion": "API_USER"
+            }
+        },
+        "crear_factura_descuento_global": {
+            "method": "POST",
+            "url": "http://localhost:8000/api/v1/invoices",
+            "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            "body": {
+                "company_id": 1,
+                "branch_id": 1,
+                "serie": "F001",
+                "fecha_emision": "2025-09-01",
+                "moneda": "PEN",
+                "forma_pago_tipo": "Contado",
+                "client": {
+                    "tipo_documento": "6",
+                    "numero_documento": "20000000001",
+                    "razon_social": "EMPRESA 1 S.A.C."
+                },
+                "detalles": [
+                    {
+                        "codigo": "P001",
+                        "descripcion": "CUADERNOS",
+                        "unidad": "NIU",
+                        "cantidad": 10,
+                        "mto_valor_unitario": 7.0,
+                        "porcentaje_igv": 18,
+                        "tip_afe_igv": "10"
+                    }
+                ],
+                "descuentos": [
+                    {
+                        "cod_tipo": "02",
+                        "monto_base": 3.0,
+                        "factor": 1.0,
+                        "monto": 3.0
+                    }
+                ],
+                "leyendas": [
+                    {
+                        "code": "1000",
+                        "value": "SETENTA Y NUEVE CON 06/100 SOLES"
+                    }
+                ],
+                "usuario_creacion": "API_USER"
+            }
+        },
+        "crear_factura_anticipo": {
+            "method": "POST",
+            "url": "http://localhost:8000/api/v1/invoices",
+            "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            "body": {
+                "company_id": 1,
+                "branch_id": 1,
+                "serie": "F001",
+                "fecha_emision": "2025-09-01",
+                "moneda": "PEN",
+                "forma_pago_tipo": "Contado",
+                "client": {
+                    "tipo_documento": "6",
+                    "numero_documento": "20000000001",
+                    "razon_social": "EMPRESA 1 S.A.C."
+                },
+                "detalles": [
+                    {
+                        "codigo": "SERV001",
+                        "descripcion": "SERVICIO DE CONSTRUCCIÓN",
+                        "unidad": "ZZ",
+                        "cantidad": 1,
+                        "mto_valor_unitario": 200.0,
+                        "porcentaje_igv": 18,
+                        "tip_afe_igv": "10"
+                    }
+                ],
+                "anticipos": [
+                    {
+                        "tipo_doc_rel": "02",
+                        "nro_doc_rel": "F001-111",
+                        "total": 100.0
+                    }
+                ],
+                "descuentos": [
+                    {
+                        "cod_tipo": "04",
+                        "factor": 1.0,
+                        "monto": 100.0,
+                        "monto_base": 100.0
+                    }
+                ],
+                "leyendas": [
+                    {
+                        "code": "1000",
+                        "value": "CIENTO TREINTA Y SEIS CON OO/100 SOLES"
+                    }
+                ],
+                "usuario_creacion": "API_USER"
+            }
+        },
+        "crear_factura_percepcion": {
+            "method": "POST",
+            "url": "http://localhost:8000/api/v1/invoices",
+            "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            "body": {
+                "company_id": 1,
+                "branch_id": 1,
+                "serie": "F001",
+                "fecha_emision": "2025-09-01",
+                "moneda": "PEN",
+                "forma_pago_tipo": "Contado",
+                "tipo_operacion": "2001",
+                "client": {
+                    "tipo_documento": "6",
+                    "numero_documento": "20000000001",
+                    "razon_social": "EMPRESA 1 S.A.C."
+                },
+                "detalles": [
+                    {
+                        "codigo": "P001",
+                        "descripcion": "PRODUCTO CON PERCEPCIÓN",
+                        "unidad": "NIU",
+                        "cantidad": 1,
+                        "mto_valor_unitario": 100.0,
+                        "porcentaje_igv": 18,
+                        "tip_afe_igv": "10"
+                    }
+                ],
+                "percepcion": {
+                    "cod_regimen": "51",
+                    "tasa": 2.0,
+                    "monto": 2.36,
+                    "monto_base": 118.0,
+                    "monto_total": 120.36
+                },
+                "leyendas": [
+                    {
+                        "code": "1000",
+                        "value": "CIENTO DIECIOCHO CON OO/100 SOLES"
+                    },
+                    {
+                        "code": "2000",
+                        "value": "COMPROBANTE DE PERCEPCIÓN"
+                    }
+                ],
+                "usuario_creacion": "API_USER"
+            }
+        },
+        "crear_factura_retencion": {
+            "method": "POST",
+            "url": "http://localhost:8000/api/v1/invoices",
+            "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            "body": {
+                "company_id": 1,
+                "branch_id": 1,
+                "serie": "F001",
+                "fecha_emision": "2025-09-01",
+                "moneda": "PEN",
+                "forma_pago_tipo": "Contado",
+                "tipo_operacion": "0101",
+                "client": {
+                    "tipo_documento": "6",
+                    "numero_documento": "20000000001",
+                    "razon_social": "EMPRESA 1 S.A.C."
+                },
+                "detalles": [
+                    {
+                        "codigo": "SERV001",
+                        "descripcion": "SERVICIO SUJETO A RETENCIÓN",
+                        "unidad": "ZZ",
+                        "cantidad": 1,
+                        "mto_valor_unitario": 100.0,
+                        "porcentaje_igv": 18,
+                        "tip_afe_igv": "10"
+                    }
+                ],
+                "retencion": {
+                    "cod_regimen": "01",
+                    "tasa": 3.0,
+                    "monto": 3.54,
+                    "monto_base": 118.0,
+                    "monto_total": 114.46
+                },
+                "leyendas": [
+                    {
+                        "code": "1000",
+                        "value": "CIENTO DIECIOCHO CON OO/100 SOLES"
+                    },
+                    {
+                        "code": "2001",
+                        "value": "AGENTE DE RETENCIÓN"
+                    }
+                ],
+                "usuario_creacion": "API_USER"
+            }
+        },
+        "crear_factura_gratuita": {
+            "method": "POST",
+            "url": "http://localhost:8000/api/v1/invoices",
+            "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            "body": {
+                "company_id": 1,
+                "branch_id": 1,
+                "serie": "F001",
+                "fecha_emision": "2025-09-01",
+                "moneda": "PEN",
+                "forma_pago_tipo": "Contado",
+                "tipo_operacion": "0101",
+                "client": {
+                    "tipo_documento": "6",
+                    "numero_documento": "20589632147",
+                    "razon_social": "COMERCIALIZADORA DEL NORTE E.I.R.L.",
+                    "direccion": "AV. LOS PINOS 789"
+                },
+                "detalles": [
+                    {
+                        "codigo": "LIBRO-001",
+                        "descripcion": "DONACION DE LIBROS EDUCATIVOS",
+                        "unidad": "NIU",
+                        "cantidad": 10,
+                        "mto_valor_unitario": 0,
+                        "mto_valor_gratuito": 25,
+                        "porcentaje_igv": 18,
+                        "tip_afe_igv": "11"
+                    },
+                    {
+                        "codigo": "KIT-001",
+                        "descripcion": "KIT PROMOCIONAL GRATUITO",
+                        "unidad": "KT",
+                        "cantidad": 5,
+                        "mto_valor_unitario": 0,
+                        "mto_valor_gratuito": 80,
+                        "porcentaje_igv": 18,
+                        "tip_afe_igv": "11"
+                    }
+                ],
+                "leyendas": [
+                    {
+                        "code": "1002",
+                        "value": "TRANSFERENCIA GRATUITA DE UN BIEN Y/O SERVICIO PRESTADO GRATUITAMENTE"
+                    }
+                ],
+                "usuario_creacion": "VENDEDOR01"
+            }
+        },
+
+        "crear_factura_descuento_linea": {
+            "method": "POST",
+            "url": "http://localhost:8000/api/v1/invoices",
+            "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            "body": {
+                "company_id": 1,
+                "branch_id": 1,
+                "serie": "FE01",
+                "fecha_emision": "2025-09-01",
+                "moneda": "PEN",
+                "forma_pago_tipo": "Contado",
+                "tipo_operacion": "0101",
+                "client": {
+                    "tipo_documento": "6",
+                    "numero_documento": "20100070970",
+                    "razon_social": "CLIENTE EMPRESA S.A.C.",
+                    "direccion": "AV. LOS PINOS 456"
+                },
+                "detalles": [
+                    {
+                        "codigo": "P001",
+                        "descripcion": "Cuadernos",
+                        "unidad": "NIU",
+                        "cantidad": 10,
+                        "mto_valor_unitario": 2.0,
+                        "descuentos": [
+                            {
+                                "cod_tipo": "00",
+                                "monto_base": 20.0,
+                                "factor": 0.2,
+                                "monto": 4.0
+                            }
+                        ],
+                        "porcentaje_igv": 18,
+                        "tip_afe_igv": "10"
+                    },
+                    {
+                        "codigo": "P002",
+                        "descripcion": "Radio",
+                        "unidad": "NIU",
+                        "cantidad": 1,
+                        "mto_valor_unitario": 50.0,
+                        "porcentaje_igv": 18,
+                        "tip_afe_igv": "10"
+                    }
+                ]
+            }
+        },
+
+        "crear_factura_compleja": {
+            "method": "POST",
+            "url": "http://localhost:8000/api/v1/invoices",
+            "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            "body": {
+                "company_id": 1,
+                "branch_id": 1,
+                "serie": "F001",
+                "fecha_emision": "2025-09-01",
+                "fecha_vencimiento": "2025-09-01",
+                "moneda": "PEN",
+                "forma_pago_tipo": "Contado",
+                "tipo_operacion": "0101",
+                "client": {
+                    "tipo_documento": "6",
+                    "numero_documento": "20100070970",
+                    "razon_social": "CLIENTE EMPRESA S.A.C.",
+                    "direccion": "AV. LOS PINOS 456"
+                },
+                "detalles": [
+                    {
+                        "codigo": "P001",
+                        "descripcion": "PROD 1 - Gravado",
+                        "unidad": "NIU",
+                        "cantidad": 2,
+                        "mto_valor_unitario": 100.0,
+                        "porcentaje_igv": 18,
+                        "tip_afe_igv": "10"
+                    },
+                    {
+                        "codigo": "P002",
+                        "descripcion": "PROD 2 - Exonerado",
+                        "unidad": "KG",
+                        "cantidad": 2,
+                        "mto_valor_unitario": 50.0,
+                        "porcentaje_igv": 0,
+                        "tip_afe_igv": "20"
+                    },
+                    {
+                        "codigo": "P003",
+                        "descripcion": "PROD 3 - Inafecto",
+                        "unidad": "NIU",
+                        "cantidad": 2,
+                        "mto_valor_unitario": 100.0,
+                        "porcentaje_igv": 0,
+                        "tip_afe_igv": "30"
+                    },
+                    {
+                        "codigo": "P004",
+                        "descripcion": "PROD 4 - Gravado Gratuito",
+                        "unidad": "NIU",
+                        "cantidad": 1,
+                        "mto_valor_unitario": 0,
+                        "mto_valor_gratuito": 100,
+                        "porcentaje_igv": 18,
+                        "tip_afe_igv": "13"
+                    },
+                    {
+                        "codigo": "P005",
+                        "descripcion": "PROD 5 - Inafecto Gratuito",
+                        "unidad": "NIU",
+                        "cantidad": 2,
+                        "mto_valor_unitario": 0,
+                        "mto_valor_gratuito": 100,
+                        "porcentaje_igv": 0,
+                        "tip_afe_igv": "32"
+                    }
+                ]
+            }
+        },
+
+        "crear_factura_detraccion": {
+            "method": "POST",
+            "url": "http://localhost:8000/api/v1/invoices",
+            "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            "body": {
+                "company_id": 1,
+                "branch_id": 1,
+                "serie": "F001",
+                "fecha_emision": "2025-09-01",
+                "moneda": "PEN",
+                "forma_pago_tipo": "Contado",
+                "tipo_operacion": "1001",
+                "client": {
+                    "tipo_documento": "6",
+                    "numero_documento": "20100070970",
+                    "razon_social": "CLIENTE EMPRESA S.A.C.",
+                    "direccion": "AV. LOS PINOS 456"
+                },
+                "detraccion": {
+                    "cod_bien_detraccion": "014",
+                    "cod_medio_pago": "001",
+                    "cta_banco": "0004-3342343243",
+                    "percent": 4.0,
+                    "mount": 37.76
+                },
+                "detalles": [
+                    {
+                        "codigo": "P001",
+                        "descripcion": "PROD 1",
+                        "unidad": "ZZ",
+                        "cantidad": 4,
+                        "mto_valor_unitario": 200.0,
+                        "porcentaje_igv": 18,
+                        "tip_afe_igv": "10"
+                    }
+                ]
+            }
+        },
+
+        "crear_factura_icbper": {
+            "method": "POST",
+            "url": "http://localhost:8000/api/v1/invoices",
+            "headers": {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            "body": {
+                "company_id": 1,
+                "branch_id": 1,
+                "serie": "F001",
+                "fecha_emision": "2025-09-01",
+                "moneda": "PEN",
+                "forma_pago_tipo": "Contado",
+                "tipo_operacion": "0101",
+                "redondeo": 0.04,
+                "client": {
+                    "tipo_documento": "6",
+                    "numero_documento": "20100070970",
+                    "razon_social": "CLIENTE EMPRESA S.A.C.",
+                    "direccion": "AV. LOS PINOS 456"
+                },
+                "detalles": [
+                    {
+                        "codigo": "P001",
+                        "descripcion": "PRODUCTO 1",
+                        "unidad": "NIU",
+                        "cantidad": 2,
+                        "mto_valor_unitario": 100.0,
+                        "porcentaje_igv": 18,
+                        "tip_afe_igv": "10"
+                    },
+                    {
+                        "codigo": "P002",
+                        "descripcion": "BOLSA DE PLASTICO",
+                        "unidad": "NIU",
+                        "cantidad": 4,
+                        "mto_valor_unitario": 0.05,
+                        "factor_icbper": 0.2,
+                        "porcentaje_igv": 18,
+                        "tip_afe_igv": "10"
+                    }
+                ]
+            }
+        }
+    },
+    "datos_empresa_prueba": {
+        "company_id": 1,
+        "ruc": "20123456789",
+        "razon_social": "EMPRESA DE PRUEBAS GREENTER S.A.C.",
+        "branch_id": 1,
+        "nombre_sucursal": "SUCURSAL PRINCIPAL",
+        "series_disponibles": {
+            "facturas": ["F001", "F002", "F003"],
+            "boletas": ["B001", "B002"],
+            "notas_credito": ["FC01", "BC01"],
+            "notas_debito": ["FD01", "BD01"],
+            "guias_remision": ["T001", "T002"]
+        }
+    },
+    "configuracion_sunat": {
+        "endpoint_beta": "https://e-beta.sunat.gob.pe/ol-ti-itcpfegem-beta/billService",
+        "usuario_sol": "MODDATOS",
+        "clave_sol": "moddatos",
+        "certificado": "Incluido en la base de datos",
+        "modo": "BETA (Pruebas)"
+    },
+    "tipos_documento_cliente": {
+        "1": "DNI",
+        "4": "Carnet de Extranjería",
+        "6": "RUC",
+        "0": "DOC.TRIB.NO.DOM.SIN.RUC"
+    },
+    "tipos_afectacion_igv": {
+        "10": "Gravado - Operación Onerosa",
+        "20": "Exonerado - Operación Onerosa",
+        "30": "Inafecto - Operación Onerosa",
+        "40": "Exportación"
+    },
+    "unidades_medida_comunes": {
+        "NIU": "Unidad (bienes)",
+        "ZZ": "Servicios",
+        "KG": "Kilogramo",
+        "KGM": "Kilogramo",
+        "MTR": "Metro",
+        "LTR": "Litro",
+        "SA": "Saco"
+    }
+}
