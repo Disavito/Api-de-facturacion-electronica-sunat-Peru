@@ -132,7 +132,7 @@ class DispatchGuide extends Model
             '18' => 'Traslado de bienes para transformación',
             '19' => 'Traslado de bienes desde un centro de acopio',
             default => $this->des_traslado ?? 'Motivo no especificado'
-        ];
+        };
     }
 
     public function getEstadoSunatColorAttribute(): string
