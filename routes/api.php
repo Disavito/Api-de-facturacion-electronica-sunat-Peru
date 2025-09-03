@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\BoletaController;
 use App\Http\Controllers\Api\DailySummaryController;
 use App\Http\Controllers\Api\CreditNoteController;
 use App\Http\Controllers\Api\DebitNoteController;
+use App\Http\Controllers\Api\PdfController;
 
 /*
 |--------------------------------------------------------------------------
@@ -26,6 +27,11 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 // Rutas de la API SUNAT
 Route::prefix('v1')->group(function () {
     
+    // PDF Formatos
+    Route::prefix('pdf')->group(function () {
+        Route::get('/formats', [PdfController::class, 'getAvailableFormats']);
+    });
+    
     // Facturas
     Route::prefix('invoices')->group(function () {
         Route::get('/', [InvoiceController::class, 'index']);
@@ -35,6 +41,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/{id}/download-xml', [InvoiceController::class, 'downloadXml']);
         Route::get('/{id}/download-cdr', [InvoiceController::class, 'downloadCdr']);
         Route::get('/{id}/download-pdf', [InvoiceController::class, 'downloadPdf']);
+        Route::post('/{id}/generate-pdf', [InvoiceController::class, 'generatePdf']);
     });
     
     // Boletas
@@ -46,6 +53,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/{id}/download-xml', [BoletaController::class, 'downloadXml']);
         Route::get('/{id}/download-cdr', [BoletaController::class, 'downloadCdr']);
         Route::get('/{id}/download-pdf', [BoletaController::class, 'downloadPdf']);
+        Route::post('/{id}/generate-pdf', [BoletaController::class, 'generatePdf']);
         
         // Funciones de resumen diario desde boletas
         Route::get('/pending-for-summary', [BoletaController::class, 'getBoletsasPendingForSummary']);
@@ -56,7 +64,7 @@ Route::prefix('v1')->group(function () {
 
     // Resúmenes Diarios
     Route::prefix('daily-summaries')->group(function () {
-        Route::get('/', [DailySummaryController::class, 'index']);
+        Route::get('/', [DailySummaryController::class, 'index']);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
         Route::post('/', [DailySummaryController::class, 'store']);
         Route::get('/{id}', [DailySummaryController::class, 'show']);
         Route::post('/{id}/send-sunat', [DailySummaryController::class, 'sendToSunat']);
@@ -64,6 +72,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/{id}/download-xml', [DailySummaryController::class, 'downloadXml']);
         Route::get('/{id}/download-cdr', [DailySummaryController::class, 'downloadCdr']);
         Route::get('/{id}/download-pdf', [DailySummaryController::class, 'downloadPdf']);
+        Route::post('/{id}/generate-pdf', [DailySummaryController::class, 'generatePdf']);
         
         // Funciones de gestión masiva
         Route::get('/pending', [DailySummaryController::class, 'getPendingSummaries']);
@@ -79,6 +88,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/{id}/download-xml', [CreditNoteController::class, 'downloadXml']);
         Route::get('/{id}/download-cdr', [CreditNoteController::class, 'downloadCdr']);
         Route::get('/{id}/download-pdf', [CreditNoteController::class, 'downloadPdf']);
+        Route::post('/{id}/generate-pdf', [CreditNoteController::class, 'generatePdf']);
         
         // Catálogo de motivos
         Route::get('/catalogs/motivos', [CreditNoteController::class, 'getMotivos']);
@@ -93,6 +103,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/{id}/download-xml', [DebitNoteController::class, 'downloadXml']);
         Route::get('/{id}/download-cdr', [DebitNoteController::class, 'downloadCdr']);
         Route::get('/{id}/download-pdf', [DebitNoteController::class, 'downloadPdf']);
+        Route::post('/{id}/generate-pdf', [DebitNoteController::class, 'generatePdf']);
         
         // Catálogo de motivos
         Route::get('/catalogs/motivos', [DebitNoteController::class, 'getMotivos']);

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HandlesPdfGeneration;
 use App\Services\DocumentService;
 use App\Services\FileService;
 use App\Models\Invoice;
@@ -13,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 
 class InvoiceController extends Controller
 {
+    use HandlesPdfGeneration;
     protected $documentService;
     protected $fileService;
 
@@ -215,29 +217,16 @@ class InvoiceController extends Controller
         }
     }
 
-    public function downloadPdf($id)
+    public function downloadPdf($id, Request $request)
     {
-        try {
-            $invoice = Invoice::findOrFail($id);
-            
-            $download = $this->fileService->downloadPdf($invoice);
-            
-            if (!$download) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'PDF no encontrado'
-                ], 404);
-            }
-            
-            return $download;
+        $invoice = Invoice::findOrFail($id);
+        return $this->downloadDocumentPdf($invoice, $request);
+    }
 
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al descargar PDF',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+    public function generatePdf($id, Request $request)
+    {
+        $invoice = Invoice::findOrFail($id);
+        return $this->generateDocumentPdf($invoice, 'invoice', $request);
     }
 
     protected function processInvoiceDetails(array $detalles, string $tipoOperacion = '0101'): array

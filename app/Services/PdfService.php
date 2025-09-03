@@ -2,81 +2,133 @@
 
 namespace App\Services;
 
-use Barryvdh\DomPDF\Facade\Pdf;
+
 use Illuminate\Support\Facades\View;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 
 class PdfService
 {
-    public function generateInvoicePdf($invoice): string
+    // Formatos disponibles
+    const FORMATS = [
+        'A4' => ['width' => 210, 'height' => 297, 'unit' => 'mm'],
+        'A5' => ['width' => 148, 'height' => 210, 'unit' => 'mm'],
+        '80mm' => ['width' => 80, 'height' => 200, 'unit' => 'mm'], // Ticket común
+        '50mm' => ['width' => 50, 'height' => 150, 'unit' => 'mm'], // Ticket pequeño
+    ];
+
+    public function generateInvoicePdf($invoice, string $format = 'A4'): string
     {
         $data = $this->prepareInvoiceData($invoice);
+        $data['format'] = $format;
         
-        $html = View::make('pdf.invoice', $data)->render();
+        $template = $this->getTemplate('invoice', $format);
+        $html = View::make($template, $data)->render();
         
-        $pdf = Pdf::loadHTML($html);
-        $pdf->setPaper('A4', 'portrait');
+        $pdf = $this->createPdfInstance($html, $format);
         
         return $pdf->output();
     }
 
-    public function generateBoletaPdf($boleta): string
+    public function generateBoletaPdf($boleta, string $format = 'A4'): string
     {
         $data = $this->prepareBoletaData($boleta);
+        $data['format'] = $format;
         
-        $html = View::make('pdf.boleta', $data)->render();
+        $template = $this->getTemplate('boleta', $format);
+        $html = View::make($template, $data)->render();
         
-        $pdf = Pdf::loadHTML($html);
-        $pdf->setPaper('A4', 'portrait');
+        $pdf = $this->createPdfInstance($html, $format);
         
         return $pdf->output();
     }
 
-    public function generateCreditNotePdf($creditNote): string
+    public function generateCreditNotePdf($creditNote, string $format = 'A4'): string
     {
         $data = $this->prepareCreditNoteData($creditNote);
+        $data['format'] = $format;
         
-        $html = View::make('pdf.credit-note', $data)->render();
+        $template = $this->getTemplate('credit-note', $format);
+        $html = View::make($template, $data)->render();
         
-        $pdf = Pdf::loadHTML($html);
-        $pdf->setPaper('A4', 'portrait');
+        $pdf = $this->createPdfInstance($html, $format);
         
         return $pdf->output();
     }
 
-    public function generateDebitNotePdf($debitNote): string
+    public function generateDebitNotePdf($debitNote, string $format = 'A4'): string
     {
         $data = $this->prepareDebitNoteData($debitNote);
+        $data['format'] = $format;
         
-        $html = View::make('pdf.debit-note', $data)->render();
+        $template = $this->getTemplate('debit-note', $format);
+        $html = View::make($template, $data)->render();
         
-        $pdf = Pdf::loadHTML($html);
-        $pdf->setPaper('A4', 'portrait');
+        $pdf = $this->createPdfInstance($html, $format);
         
         return $pdf->output();
     }
 
-    public function generateDispatchGuidePdf($dispatchGuide): string
+    public function generateDispatchGuidePdf($dispatchGuide, string $format = 'A4'): string
     {
         $data = $this->prepareDispatchGuideData($dispatchGuide);
+        $data['format'] = $format;
         
-        $html = View::make('pdf.dispatch-guide', $data)->render();
+        $template = $this->getTemplate('dispatch-guide', $format);
+        $html = View::make($template, $data)->render();
         
-        $pdf = Pdf::loadHTML($html);
-        $pdf->setPaper('A4', 'portrait');
+        $pdf = $this->createPdfInstance($html, $format);
+        
+        return $pdf->output();
+    }
+
+    public function generateDailySummaryPdf($dailySummary, string $format = 'A4'): string
+    {
+        $data = $this->prepareDailySummaryData($dailySummary);
+        $data['format'] = $format;
+        
+        $template = $this->getTemplate('daily-summary', $format);
+        $html = View::make($template, $data)->render();
+        
+        $pdf = $this->createPdfInstance($html, $format);
         
         return $pdf->output();
     }
 
     protected function prepareInvoiceData($invoice): array
     {
+        // Preparar datos del cliente con valores por defecto
+        $clientData = $invoice->client_data ?? json_decode($invoice->client_json, true) ?? [];
+        if (!is_array($clientData)) {
+            $clientData = [];
+        }
+        
+        // Valores por defecto para cliente
+        $client = array_merge([
+            'razon_social' => 'CLIENTE',
+            'tipo_documento' => '1',
+            'numero_documento' => 'N/A',
+            'direccion' => '',
+            'ubigeo' => '',
+            'distrito' => '',
+            'provincia' => '',
+            'departamento' => '',
+        ], $clientData);
+
+        // Preparar detalles con valores por defecto
+        $detalles = $invoice->detalles ?? json_decode($invoice->detalles_json, true) ?? [];
+        if (!is_array($detalles)) {
+            $detalles = [];
+        }
+
         return [
             'document' => $invoice,
             'company' => $invoice->company,
             'branch' => $invoice->branch,
-            'client' => $invoice->client_data ?? json_decode($invoice->client_json, true),
-            'detalles' => $invoice->detalles ?? json_decode($invoice->detalles_json, true),
+            'client' => $client,
+            'detalles' => $detalles,
             'totales' => $this->calculateInvoiceTotals($invoice),
-            'fecha_emision' => $invoice->fecha_emision->format('d/m/Y'),
+            'fecha_emision' => $invoice->fecha_emision ? $invoice->fecha_emision->format('d/m/Y') : date('d/m/Y'),
             'fecha_vencimiento' => $invoice->fecha_vencimiento ? $invoice->fecha_vencimiento->format('d/m/Y') : null,
             'tipo_documento_nombre' => 'FACTURA ELECTRÓNICA',
         ];
@@ -159,15 +211,22 @@ class PdfService
 
     protected function calculateInvoiceTotals($invoice): array
     {
-        $detalles = $invoice->detalles ?? json_decode($invoice->detalles_json, true);
+        $detalles = $invoice->detalles ?? json_decode($invoice->detalles_json, true) ?? [];
+        if (!is_array($detalles)) {
+            $detalles = [];
+        }
         
         $subtotal = 0;
         $igv = 0;
         $total = 0;
 
-        if ($detalles) {
+        if (count($detalles) > 0) {
             foreach ($detalles as $detalle) {
-                $valorVenta = $detalle['mto_valor_venta'] ?? ($detalle['cantidad'] * $detalle['mto_valor_unitario']);
+                if (!is_array($detalle)) continue;
+                
+                $cantidad = $detalle['cantidad'] ?? 0;
+                $valorUnitario = $detalle['mto_valor_unitario'] ?? 0;
+                $valorVenta = $detalle['mto_valor_venta'] ?? ($cantidad * $valorUnitario);
                 $igvDetalle = $detalle['igv'] ?? 0;
                 
                 $subtotal += $valorVenta;
@@ -306,5 +365,146 @@ class PdfService
         }
 
         return 'número muy grande';
+    }
+
+    /**
+     * Crea una instancia de DomPDF con el HTML y formato especificado
+     */
+    protected function createPdfInstance(string $html, string $format): Dompdf
+    {
+        $options = new Options();
+        $options->set('defaultFont', 'Arial');
+        $options->set('isRemoteEnabled', true);
+        $options->set('isHtml5ParserEnabled', true);
+        
+        $pdf = new Dompdf($options);
+        $pdf->loadHtml($html);
+        
+        $this->setPaperFormat($pdf, $format);
+        $pdf->render();
+        
+        return $pdf;
+    }
+
+    /**
+     * Configura el formato del papel según el tipo especificado
+     */
+    protected function setPaperFormat(Dompdf $pdf, string $format): void
+    {
+        if (!isset(self::FORMATS[$format])) {
+            $format = 'A4'; // Fallback a A4
+        }
+
+        $formatConfig = self::FORMATS[$format];
+        
+        if ($format === 'A4' || $format === 'A5') {
+            $pdf->setPaper($format, 'portrait');
+        } else {
+            // Para formatos personalizados (80mm, 50mm)
+            $width = $this->mmToPt($formatConfig['width']);
+            $height = $this->mmToPt($formatConfig['height']);
+            $pdf->setPaper(array(0, 0, $width, $height), 'portrait');
+        }
+    }
+
+    /**
+     * Convierte milímetros a puntos (pts) para DomPDF
+     */
+    protected function mmToPt(float $mm): float
+    {
+        return $mm * 2.834645669; // 1mm = 2.834645669 pts
+    }
+
+    /**
+     * Obtiene el template correcto según el tipo de documento y formato
+     */
+    protected function getTemplate(string $documentType, string $format): string
+    {
+        // Nueva estructura organizada por formato
+        $formatTemplate = "pdf.{$format}.{$documentType}";
+        
+        // Verificar si existe el template específico para el formato
+        if (View::exists($formatTemplate)) {
+            return $formatTemplate;
+        }
+        
+        // Fallback: intentar con el template A4 como predeterminado
+        $a4Template = "pdf.a4.{$documentType}";
+        if (View::exists($a4Template)) {
+            return $a4Template;
+        }
+        
+        // Último fallback: template en la raíz (estructura antigua)
+        $rootTemplate = "pdf.{$documentType}";
+        if (View::exists($rootTemplate)) {
+            return $rootTemplate;
+        }
+        
+        // Si no existe ninguno, usar A4 invoice como fallback absoluto
+        return "pdf.a4.invoice";
+    }
+
+    /**
+     * Obtiene los formatos disponibles
+     */
+    public function getAvailableFormats(): array
+    {
+        return array_keys(self::FORMATS);
+    }
+
+    /**
+     * Valida si un formato es válido
+     */
+    public function isValidFormat(string $format): bool
+    {
+        return isset(self::FORMATS[$format]);
+    }
+
+    /**
+     * Prepara datos para Daily Summary
+     */
+    protected function prepareDailySummaryData($dailySummary): array
+    {
+        return [
+            'document' => $dailySummary,
+            'company' => $dailySummary->company,
+            'branch' => $dailySummary->branch,
+            'detalles' => $dailySummary->detalles ?? json_decode($dailySummary->detalles_json, true),
+            'fecha_emision' => $dailySummary->fecha_emision->format('d/m/Y'),
+            'fecha_referencia' => $dailySummary->fec_resumen->format('d/m/Y'),
+            'tipo_documento_nombre' => 'RESUMEN DIARIO DE BOLETAS',
+            'totales' => $this->calculateDailySummaryTotals($dailySummary),
+        ];
+    }
+
+    /**
+     * Calcula totales para Daily Summary
+     */
+    protected function calculateDailySummaryTotals($dailySummary): array
+    {
+        $detalles = $dailySummary->detalles ?? json_decode($dailySummary->detalles_json, true);
+        
+        $totalGravada = 0;
+        $totalIgv = 0;
+        $totalVenta = 0;
+
+        if ($detalles) {
+            foreach ($detalles as $detalle) {
+                $totalGravada += $detalle['mto_oper_gravadas'] ?? 0;
+                $totalIgv += $detalle['mto_igv'] ?? 0;
+                $totalVenta += $detalle['mto_imp_venta'] ?? 0;
+            }
+        }
+
+        return [
+            'total_gravada' => $totalGravada,
+            'total_igv' => $totalIgv,
+            'total_venta' => $totalVenta,
+            'total_gravada_formatted' => number_format($totalGravada, 2),
+            'total_igv_formatted' => number_format($totalIgv, 2),
+            'total_venta_formatted' => number_format($totalVenta, 2),
+            'moneda' => $dailySummary->moneda ?? 'PEN',
+            'moneda_nombre' => $this->getMonedaNombre($dailySummary->moneda ?? 'PEN'),
+        ];
     }
 }

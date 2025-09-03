@@ -9,6 +9,7 @@ class FileService
 {
     public function saveXml($document, string $xmlContent): string
     {
+        $this->ensureDirectoryExists($document, 'xml');
         $path = $this->generatePath($document, 'xml');
         Storage::disk('public')->put($path, $xmlContent);
         return $path;
@@ -16,38 +17,45 @@ class FileService
 
     public function saveCdr($document, string $cdrContent): string
     {
+        $this->ensureDirectoryExists($document, 'zip');
         $path = $this->generatePath($document, 'zip');
         Storage::disk('public')->put($path, $cdrContent);
         return $path;
     }
 
-    public function savePdf($document, string $pdfContent): string
+    public function savePdf($document, string $pdfContent, string $format = 'A4'): string
     {
-        $path = $this->generatePath($document, 'pdf');
+        $this->ensureDirectoryExists($document, 'pdf');
+        $path = $this->generatePath($document, 'pdf', $format);
         Storage::disk('public')->put($path, $pdfContent);
         return $path;
     }
 
-    protected function generatePath($document, string $extension): string
+    protected function generatePath($document, string $extension, string $format = 'A4'): string
     {
         $date = Carbon::parse($document->fecha_emision);
-        $year = $date->format('Y');
-        $month = $date->format('m');
-        $day = $date->format('d');
+        $dateFolder = $date->format('dmY'); // Formato: 02092025
         
-        $companyRuc = $document->company->ruc;
         $fileName = $document->numero_completo;
         
         // Obtener tipo de comprobante
         $tipoComprobante = $this->getDocumentTypeName($document);
         
-        // Crear estructura: comprobantes/TIPO_COMPROBANTE/RUC/YYYY/MM/DD/
-        $directory = "comprobantes/{$tipoComprobante}/{$companyRuc}/{$year}/{$month}/{$day}";
+        // Determinar el tipo de archivo (xml, cdr o pdf)
+        $tipoArchivo = $extension === 'zip' ? 'cdr' : $extension;
+        
+        // Crear estructura: TIPO_COMPROBANTE/TIPO_ARCHIVO/DDMMYYYY/
+        $directory = "{$tipoComprobante}/{$tipoArchivo}/{$dateFolder}";
         
         // Prefijo según tipo de archivo
         $prefix = '';
         if ($extension === 'zip') {
             $prefix = 'R-'; // CDR
+        }
+        
+        // Para PDFs, agregar el formato al nombre del archivo si no es A4
+        if ($extension === 'pdf' && $format !== 'A4') {
+            $fileName .= "_{$format}";
         }
         
         return "{$directory}/{$prefix}{$fileName}.{$extension}";
@@ -56,7 +64,8 @@ class FileService
     protected function getDocumentTypeName($document): string
     {
         // Determinar el nombre de la carpeta según el tipo de documento
-        if (property_exists($document, 'tipo_documento')) {
+        // Verificar si es un modelo Eloquent con el atributo tipo_documento
+        if (isset($document->tipo_documento)) {
             return match($document->tipo_documento) {
                 '01' => 'facturas',
                 '03' => 'boletas',
@@ -72,7 +81,7 @@ class FileService
         // Fallback basado en el nombre de la clase del modelo
         $className = class_basename($document);
         return match($className) {
-            'Factura' => 'facturas',
+            'Invoice' => 'facturas',  // Corregido: Invoice en lugar de Factura
             'Boleta' => 'boletas',
             'CreditNote' => 'notas-credito',
             'DebitNote' => 'notas-debito', 
@@ -153,7 +162,7 @@ class FileService
         );
     }
 
-    public function createDirectoryStructure(string $ruc): void
+    public function createDirectoryStructure(): void
     {
         // Tipos de comprobantes
         $tiposComprobantes = [
@@ -168,26 +177,30 @@ class FileService
             'otros-comprobantes'
         ];
         
-        // Crear estructura de directorios para el año actual
-        $currentYear = Carbon::now()->format('Y');
+        // Tipos de archivos
+        $tiposArchivos = ['xml', 'cdr', 'pdf'];
         
+        // Crear estructura de directorios base
         foreach ($tiposComprobantes as $tipoComprobante) {
-            $baseDir = "comprobantes/{$tipoComprobante}/{$ruc}";
-            
-            for ($month = 1; $month <= 12; $month++) {
-                $monthStr = str_pad($month, 2, '0', STR_PAD_LEFT);
-                
-                // Crear directorio del mes
-                $monthDir = "{$baseDir}/{$currentYear}/{$monthStr}";
-                Storage::disk('public')->makeDirectory($monthDir);
-                
-                // Crear algunos directorios de días comunes
-                for ($day = 1; $day <= 31; $day++) {
-                    $dayStr = str_pad($day, 2, '0', STR_PAD_LEFT);
-                    $dayDir = "{$monthDir}/{$dayStr}";
-                    Storage::disk('public')->makeDirectory($dayDir);
-                }
+            foreach ($tiposArchivos as $tipoArchivo) {
+                $directory = "{$tipoComprobante}/{$tipoArchivo}";
+                Storage::disk('public')->makeDirectory($directory);
             }
+        }
+    }
+
+    public function ensureDirectoryExists($document, string $extension): void
+    {
+        $date = Carbon::parse($document->fecha_emision);
+        $dateFolder = $date->format('dmY');
+        
+        $tipoComprobante = $this->getDocumentTypeName($document);
+        $tipoArchivo = $extension === 'zip' ? 'cdr' : $extension;
+        
+        $directory = "{$tipoComprobante}/{$tipoArchivo}/{$dateFolder}";
+        
+        if (!Storage::disk('public')->exists($directory)) {
+            Storage::disk('public')->makeDirectory($directory);
         }
     }
 }
