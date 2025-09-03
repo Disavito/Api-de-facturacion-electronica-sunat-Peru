@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $tipo_documento_nombre ?? 'COMPROBANTE ELECTRÓNICO' }}</title>
+    <title>{{ $tipo_documento_nombre ?? 'COMPROBANTE' }}</title>
     <style>
         * {
             margin: 0;
@@ -12,131 +12,126 @@
         }
 
         body {
-            font-family: 'Courier New', monospace;
-            font-size: {{ $format === '50mm' ? '6px' : '8px' }};
-            line-height: 1.2;
+            font-family: sans-serif;
+            font-size: 10px;
+            line-height: 1.4;
             color: #000;
-            width: 100%;
-            background: white;
+            width: 78mm; /* Ancho para 80mm */
+            margin: 0 auto;
         }
 
-        .container {
-            width: 100%;
-            padding: {{ $format === '50mm' ? '2mm' : '3mm' }};
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: {{ $format === '50mm' ? '2mm' : '3mm' }};
-            border-bottom: 1px dashed #000;
-            padding-bottom: {{ $format === '50mm' ? '1mm' : '2mm' }};
-        }
-
-        .company-name {
-            font-weight: bold;
-            font-size: {{ $format === '50mm' ? '7px' : '10px' }};
-            margin-bottom: 1mm;
-        }
-
-        .company-info {
-            font-size: {{ $format === '50mm' ? '5px' : '7px' }};
-            line-height: 1.1;
-        }
-
-        .document-info {
-            text-align: center;
-            margin: {{ $format === '50mm' ? '2mm' : '3mm' }} 0;
-            font-weight: bold;
-            font-size: {{ $format === '50mm' ? '6px' : '8px' }};
-        }
-
-        .client-info {
-            margin: {{ $format === '50mm' ? '2mm' : '3mm' }} 0;
-            border-top: 1px dashed #000;
-            border-bottom: 1px dashed #000;
-            padding: {{ $format === '50mm' ? '1mm' : '2mm' }} 0;
-        }
-
-        .details-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: {{ $format === '50mm' ? '2mm' : '3mm' }} 0;
-        }
-
-        .details-table th,
-        .details-table td {
-            text-align: left;
-            padding: {{ $format === '50mm' ? '0.5mm' : '1mm' }};
-            font-size: {{ $format === '50mm' ? '5px' : '7px' }};
-            border-bottom: 1px dotted #ccc;
-        }
-
-        .details-table th {
-            font-weight: bold;
-            border-bottom: 1px solid #000;
-        }
-
-        .text-right {
-            text-align: right;
+        .ticket {
+            padding: 10px;
         }
 
         .text-center {
             text-align: center;
         }
 
-        .totals {
-            margin-top: {{ $format === '50mm' ? '2mm' : '3mm' }};
-            border-top: 1px dashed #000;
-            padding-top: {{ $format === '50mm' ? '1mm' : '2mm' }};
+        .text-right {
+            text-align: right;
         }
 
-        .total-row {
-            display: flex;
-            justify-content: space-between;
-            margin: {{ $format === '50mm' ? '0.5mm' : '1mm' }} 0;
-            font-size: {{ $format === '50mm' ? '6px' : '8px' }};
+        .logo {
+            display: block;
+            margin: 0 auto 10px;
+            max-width: 120px;
+            max-height: 80px;
         }
 
-        .total-final {
+        .company-name {
+            font-size: 14px;
             font-weight: bold;
-            font-size: {{ $format === '50mm' ? '7px' : '9px' }};
+            text-transform: uppercase;
+        }
+
+        p {
+            margin-bottom: 2px;
+        }
+
+        .document-info {
+            margin: 10px 0;
+            text-align: center;
             border-top: 1px solid #000;
-            padding-top: 1mm;
+            border-bottom: 1px solid #000;
+            padding: 5px 0;
+        }
+
+        .document-title {
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .client-info {
+            margin-bottom: 10px;
+        }
+
+        .client-info table {
+            width: 100%;
+        }
+
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+        }
+
+        .items-table thead {
+            border-top: 1px solid #000;
+            border-bottom: 1px solid #000;
+        }
+
+        .items-table th,
+        .items-table td {
+            padding: 4px;
+            vertical-align: top;
+        }
+
+        .items-table th {
+            font-weight: bold;
+        }
+
+        .items-table tbody td {
+            border-bottom: 1px dotted #000;
+        }
+
+        .totals {
+            margin-bottom: 10px;
+        }
+
+        .totals-table {
+            width: 100%;
+        }
+
+        .totals-table td:last-child {
+            width: 40%;
+        }
+
+        .additional-info .section {
+            margin-bottom: 10px;
+        }
+
+        .section-title {
+            font-weight: bold;
+            margin-bottom: 4px;
         }
 
         .footer {
             text-align: center;
-            margin-top: {{ $format === '50mm' ? '3mm' : '4mm' }};
-            font-size: {{ $format === '50mm' ? '5px' : '6px' }};
-            border-top: 1px dashed #000;
-            padding-top: {{ $format === '50mm' ? '1mm' : '2mm' }};
+            margin-top: 10px;
+            border-top: 1px solid #000;
+            padding-top: 5px;
+            font-size: 9px;
         }
 
-        .qr-section {
-            text-align: center;
-            margin: {{ $format === '50mm' ? '2mm' : '3mm' }} 0;
-        }
-
-        .break-word {
+        .hash {
             word-break: break-all;
-            word-wrap: break-word;
+            font-size: 8px;
         }
 
-        @media print {
-            body {
-                margin: 0;
-                padding: 0;
-            }
-            .container {
-                width: 100%;
-                height: auto;
-            }
-        }
     </style>
 </head>
 <body>
-    <div class="container">
-        @yield('content')
-    </div>
+    @yield('content')
 </body>
 </html>

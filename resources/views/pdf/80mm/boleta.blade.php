@@ -1,122 +1,132 @@
-@extends('pdf.ticket.layout')
+@extends('pdf.80mm.layout')
 
 @section('content')
-    <!-- Header -->
-    <div class="header">
-        <div class="company-name">{{ strtoupper($company->razon_social ?? 'EMPRESA') }}</div>
-        <div class="company-info">
-            @if($company->nombre_comercial)
-                {{ $company->nombre_comercial }}<br>
+    <div class="ticket">
+        {{-- Logo --}}
+        @if (isset($company->logo_path) && $company->logo_path)
+            <img src="{{ $company->logo_path }}" alt="logo" class="logo">
+        @else
+            <img src="https://via.placeholder.com/150" alt="logo" class="logo">
+        @endif
+
+        {{-- Company Info --}}
+        <div class="text-center">
+            <p class="company-name">{{ strtoupper($company->razon_social ?? 'NOMBRE DE LA EMPRESA') }}</p>
+            <p>RUC: {{ $company->ruc ?? '12345678901' }}</p>
+            <p>{{ $company->direccion ?? 'DIRECCIÓN DE LA EMPRESA' }}</p>
+            @if (isset($company->telefono))
+                <p>CONTRATOS: {{ $company->telefono }}</p>
             @endif
-            RUC: {{ $company->ruc ?? '' }}<br>
-            {{ $company->direccion ?? '' }}<br>
-            @if($company->telefono)
-                Tel: {{ $company->telefono }}<br>
-            @endif
-            @if($company->email)
-                Email: {{ $company->email }}
+            @if (isset($company->email))
+                <p>CORREO: {{ strtoupper($company->email) }}</p>
             @endif
         </div>
-    </div>
 
-    <!-- Document Info -->
-    <div class="document-info">
-        <div>{{ $tipo_documento_nombre }}</div>
-        <div>{{ $document->numero_completo }}</div>
-        <div>{{ $fecha_emision }}</div>
-    </div>
-
-    <!-- Client Info -->
-    <div class="client-info">
-        <div><strong>CLIENTE:</strong></div>
-        <div>{{ strtoupper($client['razon_social'] ?? $client['nombre'] ?? 'CLIENTE') }}</div>
-        @if(isset($client['numero_documento']))
-            <div>{{ $client['tipo_documento'] == '6' ? 'RUC' : ($client['tipo_documento'] == '1' ? 'DNI' : 'DOC') }}: {{ $client['numero_documento'] }}</div>
-        @endif
-        @if(isset($client['direccion']) && $client['direccion'])
-            <div class="break-word">{{ $client['direccion'] }}</div>
-        @endif
-    </div>
-
-    <!-- Details -->
-    <table class="details-table">
-        <thead>
-            <tr>
-                <th>DESCRIPCIÓN</th>
-                <th class="text-center">CANT</th>
-                <th class="text-right">TOTAL</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($detalles as $detalle)
-                <tr>
-                    <td class="break-word">
-                        {{ strtoupper($detalle['descripcion']) }}
-                        @if(isset($detalle['codigo']) && $detalle['codigo'])
-                            <br><small>Cod: {{ $detalle['codigo'] }}</small>
-                        @endif
-                    </td>
-                    <td class="text-center">{{ number_format($detalle['cantidad'], 0) }}</td>
-                    <td class="text-right">{{ number_format($detalle['mto_valor_venta'] ?? ($detalle['cantidad'] * $detalle['mto_valor_unitario']), 2) }}</td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
-
-    <!-- Totals -->
-    <div class="totals">
-        @if($totales['subtotal'] > 0)
-            <div class="total-row">
-                <span>SUB TOTAL:</span>
-                <span>S/ {{ $totales['subtotal_formatted'] }}</span>
-            </div>
-        @endif
-        @if($totales['igv'] > 0)
-            <div class="total-row">
-                <span>IGV (18%):</span>
-                <span>S/ {{ $totales['igv_formatted'] }}</span>
-            </div>
-        @endif
-        <div class="total-row total-final">
-            <span>TOTAL:</span>
-            <span>S/ {{ $totales['total_formatted'] }}</span>
+        {{-- Document Info --}}
+        <div class="document-info">
+            <p class="document-title">{{ strtoupper($tipo_documento_nombre) }}</p>
+            <p>{{ $document->numero_completo }}</p>
         </div>
-    </div>
 
-    <!-- Payment Info -->
-    @if(isset($document->forma_pago_tipo))
+        {{-- Client Info --}}
         <div class="client-info">
-            <div><strong>FORMA DE PAGO:</strong> {{ $document->forma_pago_tipo }}</div>
+            <table>
+                <tr>
+                    <td><strong>CLIENTE</strong></td>
+                    <td>: {{ strtoupper($client['razon_social'] ?? 'CLIENTE VARIOS') }}</td>
+                </tr>
+                <tr>
+                    <td><strong>{{ $client['tipo_documento'] == '6' ? 'RUC' : 'DNI' }}</strong></td>
+                    <td>: {{ $client['numero_documento'] }}</td>
+                </tr>
+                <tr>
+                    <td><strong>FECHA</strong></td>
+                    <td>: {{ $fecha_emision }}</td>
+                </tr>
+            </table>
         </div>
-    @endif
 
-    <!-- QR Code Section -->
-    @if($format !== '50mm')
-        <div class="qr-section">
-            <div class="qr-code">
-                @if(isset($document->codigo_hash))
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data={{ urlencode($document->codigo_hash) }}" alt="Código QR">
-                @else
-                    <div style="font-size: {{ $format === '50mm' ? '6px' : '8px' }}; color: #6c757d;">QR CODE</div>
-                @endif
-            </div>
-            <div class="qr-text">
-                Consulte la validez del comprobante en:<br>
-                <strong>www.sunat.gob.pe</strong>
-            </div>
+        {{-- Items Table --}}
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Descripción</th>
+                    <th class="text-center">Cant.</th>
+                    <th class="text-right">P. Unit</th>
+                    <th class="text-right">Importe</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($detalles as $detalle)
+                    <tr>
+                        <td>{{ $detalle['codigo'] ?? '' }}</td>
+                        <td>{{ strtoupper($detalle['descripcion']) }}</td>
+                        <td class="text-center">{{ number_format($detalle['cantidad'], 2) }}</td>
+                        <td class="text-right">{{ number_format($detalle['mto_valor_unitario'], 2) }}</td>
+                        <td class="text-right">{{ number_format($detalle['mto_valor_venta'], 2) }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+
+        {{-- Totals --}}
+        <div class="totals">
+            <table class="totals-table">
+                <tr>
+                    <td><strong>SUB TOTAL</strong></td>
+                    <td class="text-right">PEN {{ $totales['subtotal_formatted'] }}</td>
+                </tr>
+                <tr>
+                    <td><strong>I.G.V.</strong></td>
+                    <td class="text-right">PEN {{ $totales['igv_formatted'] }}</td>
+                </tr>
+                <tr>
+                    <td><strong>TOTAL VENTA</strong></td>
+                    <td class="text-right">PEN {{ $totales['total_formatted'] }}</td>
+                </tr>
+            </table>
         </div>
-    @endif
 
-    <!-- Footer -->
-    <div class="footer">
-        <div class="footer-line">Autorizado mediante Resolución de Intendencia SUNAT</div>
-        <div class="footer-line">Representación impresa de la {{ $tipo_documento_nombre ?? 'BOLETA DE VENTA ELECTRÓNICA' }}</div>
-        @if($company->website)
-            <div class="footer-line">{{ $company->website }}</div>
-        @endif
-        @if(isset($document->codigo_hash))
-            <div class="footer-line" style="font-size: {{ $format === '50mm' ? '4px' : '5px' }}; word-break: break-all;">Hash: {{ $document->codigo_hash }}</div>
-        @endif
-        <div class="footer-line"><strong>¡GRACIAS POR SU COMPRA!</strong></div>
+        {{-- Additional Info --}}
+        <div class="additional-info">
+            @if (isset($document->adelanto) && $document->adelanto > 0)
+                <div class="section">
+                    <p class="section-title">Adelanto y Saldo</p>
+                    <p>Adelanto de S/ {{ number_format($document->adelanto, 2) }}</p>
+                    <p>Saldo de S/ {{ number_format($totales['total'] - $document->adelanto, 2) }}</p>
+                </div>
+            @endif
+
+            @if (isset($company->cuentas_bancarias) && count($company->cuentas_bancarias) > 0)
+                <div class="section">
+                    <p class="section-title">Cuentas Bancarias</p>
+                    @foreach ($company->cuentas_bancarias as $cuenta)
+                        <p>{{ $cuenta['banco'] }}: {{ $cuenta['numero_cuenta'] }}</p>
+                        @if (isset($cuenta['cci']))
+                            <p>{{ $cuenta['banco'] }} CCI: {{ $cuenta['cci'] }}</p>
+                        @endif
+                    @endforeach
+                </div>
+            @endif
+
+            @if (isset($company->condiciones) && count($company->condiciones) > 0)
+                <div class="section">
+                    <p class="section-title">Condiciones</p>
+                    @foreach ($company->condiciones as $condicion)
+                        <p>* {{ $condicion }}</p>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+
+        {{-- Footer --}}
+        <div class="footer">
+            <p>Representación impresa de la {{ $tipo_documento_nombre ?? 'BOLETA ELECTRÓNICA' }}</p>
+            @if (isset($document->codigo_hash))
+                <p class="hash">Hash: {{ $document->codigo_hash }}</p>
+            @endif
+            <p>Consulte su documento en {{ $company->website ?? 'nuestro sitio web' }}</p>
+        </div>
     </div>
 @endsection
