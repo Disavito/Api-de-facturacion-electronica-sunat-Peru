@@ -1,0 +1,269 @@
+{
+  "ejemplos_resumenes_diarios": [
+    {
+      "nombre": "Resumen Diario - Boletas Básico",
+      "descripcion": "Resumen diario con boletas del día",
+      "data": {
+        "company_id": 1,
+        "branch_id": 1,
+        "fecha_generacion": "2025-09-05",
+        "fecha_resumen": "2025-09-04",
+        "ubl_version": "2.0",
+        "moneda": "PEN",
+        "detalles": [
+          {
+            "tipo_documento": "03",
+            "serie_numero": "B001-00001",
+            "estado": "1",
+            "cliente_tipo": "1",
+            "cliente_numero": "12345678",
+            "total": 118.00,
+            "mto_oper_gravadas": 100.00,
+            "mto_oper_exoneradas": 0.00,
+            "mto_oper_inafectas": 0.00,
+            "mto_igv": 18.00,
+            "mto_isc": 0.00,
+            "mto_icbper": 0.00,
+            "mto_otros_cargos": 0.00
+          },
+          {
+            "tipo_documento": "03",
+            "serie_numero": "B001-00002",
+            "estado": "1",
+            "cliente_tipo": "1",
+            "cliente_numero": "87654321",
+            "total": 59.00,
+            "mto_oper_gravadas": 50.00,
+            "mto_oper_exoneradas": 0.00,
+            "mto_oper_inafectas": 0.00,
+            "mto_igv": 9.00,
+            "mto_isc": 0.00,
+            "mto_icbper": 0.00,
+            "mto_otros_cargos": 0.00
+          },
+          {
+            "tipo_documento": "03",
+            "serie_numero": "B001-00003",
+            "estado": "1",
+            "cliente_tipo": "0",
+            "cliente_numero": "00000000",
+            "total": 236.00,
+            "mto_oper_gravadas": 200.00,
+            "mto_oper_exoneradas": 0.00,
+            "mto_oper_inafectas": 0.00,
+            "mto_igv": 36.00,
+            "mto_isc": 0.00,
+            "mto_icbper": 0.00,
+            "mto_otros_cargos": 0.00
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "Resumen Diario - Con Anulaciones",
+      "descripcion": "Resumen diario incluyendo boletas anuladas",
+      "data": {
+        "company_id": 1,
+        "branch_id": 1,
+        "fecha_generacion": "2025-09-05",
+        "fecha_resumen": "2025-09-04",
+        "ubl_version": "2.0",
+        "moneda": "PEN",
+        "detalles": [
+          {
+            "tipo_documento": "03",
+            "serie_numero": "B001-00010",
+            "estado": "1",
+            "cliente_tipo": "1",
+            "cliente_numero": "11223344",
+            "total": 354.00,
+            "mto_oper_gravadas": 300.00,
+            "mto_oper_exoneradas": 0.00,
+            "mto_oper_inafectas": 0.00,
+            "mto_igv": 54.00,
+            "mto_isc": 0.00,
+            "mto_icbper": 0.00,
+            "mto_otros_cargos": 0.00
+          },
+          {
+            "tipo_documento": "03",
+            "serie_numero": "B001-00011",
+            "estado": "3",
+            "cliente_tipo": "1",
+            "cliente_numero": "55667788",
+            "total": 0.00,
+            "mto_oper_gravadas": 0.00,
+            "mto_oper_exoneradas": 0.00,
+            "mto_oper_inafectas": 0.00,
+            "mto_igv": 0.00,
+            "mto_isc": 0.00,
+            "mto_icbper": 0.00,
+            "mto_otros_cargos": 0.00
+          },
+          {
+            "tipo_documento": "03",
+            "serie_numero": "B001-00012",
+            "estado": "1",
+            "cliente_tipo": "6",
+            "cliente_numero": "20123456789",
+            "total": 590.00,
+            "mto_oper_gravadas": 500.00,
+            "mto_oper_exoneradas": 0.00,
+            "mto_oper_inafectas": 0.00,
+            "mto_igv": 90.00,
+            "mto_isc": 0.00,
+            "mto_icbper": 0.00,
+            "mto_otros_cargos": 0.00
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "Resumen Diario - Productos Mixtos",
+      "descripcion": "Resumen con boletas de diferentes tipos de afectación",
+      "data": {
+        "company_id": 1,
+        "branch_id": 1,
+        "fecha_generacion": "2025-09-05",
+        "fecha_resumen": "2025-09-04",
+        "ubl_version": "2.0",
+        "moneda": "PEN",
+        "detalles": [
+          {
+            "tipo_documento": "03",
+            "serie_numero": "B001-00020",
+            "estado": "1",
+            "cliente_type": "1",
+            "cliente_numero": "98765432",
+            "total": 67.00,
+            "mto_oper_gravadas": 0.00,
+            "mto_oper_exoneradas": 67.00,
+            "mto_oper_inafectas": 0.00,
+            "mto_igv": 0.00,
+            "mto_isc": 0.00,
+            "mto_icbper": 0.00,
+            "mto_otros_cargos": 0.00
+          },
+          {
+            "tipo_documento": "03",
+            "serie_numero": "B001-00021",
+            "estado": "1",
+            "cliente_tipo": "1",
+            "cliente_numero": "12121212",
+            "total": 230.00,
+            "mto_oper_gravadas": 0.00,
+            "mto_oper_exoneradas": 0.00,
+            "mto_oper_inafectas": 230.00,
+            "mto_igv": 0.00,
+            "mto_isc": 0.00,
+            "mto_icbper": 0.00,
+            "mto_otros_cargos": 0.00
+          },
+          {
+            "tipo_documento": "03",
+            "serie_numero": "B001-00022",
+            "estado": "1",
+            "cliente_tipo": "1",
+            "cliente_numero": "34343434",
+            "total": 201.50,
+            "mto_oper_gravadas": 120.00,
+            "mto_oper_exoneradas": 50.00,
+            "mto_oper_inafectas": 10.00,
+            "mto_igv": 21.60,
+            "mto_isc": 0.00,
+            "mto_icbper": 1.50,
+            "mto_otros_cargos": 0.00
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "Resumen Diario - Con ISC",
+      "descripcion": "Resumen con boletas que incluyen ISC",
+      "data": {
+        "company_id": 1,
+        "branch_id": 1,
+        "fecha_generacion": "2025-09-05",
+        "fecha_resumen": "2025-09-04",
+        "ubl_version": "2.0",
+        "moneda": "PEN",
+        "detalles": [
+          {
+            "tipo_documento": "03",
+            "serie_numero": "B001-00030",
+            "estado": "1",
+            "cliente_tipo": "1",
+            "cliente_numero": "45678912",
+            "total": 200.20,
+            "mto_oper_gravadas": 120.00,
+            "mto_oper_exoneradas": 0.00,
+            "mto_oper_inafectas": 0.00,
+            "mto_igv": 21.60,
+            "mto_isc": 36.00,
+            "mto_icbper": 0.00,
+            "mto_otros_cargos": 0.00
+          },
+          {
+            "tipo_documento": "03",
+            "serie_numero": "B001-00031",
+            "estado": "1",
+            "cliente_tipo": "0",
+            "cliente_numero": "00000000",
+            "total": 76.95,
+            "mto_oper_gravadas": 45.00,
+            "mto_oper_exoneradas": 0.00,
+            "mto_oper_inafectas": 0.00,
+            "mto_igv": 8.10,
+            "mto_isc": 9.00,
+            "mto_icbper": 0.00,
+            "mto_otros_cargos": 0.00
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "Resumen Diario - Incluye Notas Crédito",
+      "descripcion": "Resumen que incluye notas de crédito sobre boletas",
+      "data": {
+        "company_id": 1,
+        "branch_id": 1,
+        "fecha_generacion": "2025-09-05",
+        "fecha_resumen": "2025-09-04",
+        "ubl_version": "2.0",
+        "moneda": "PEN",
+        "detalles": [
+          {
+            "tipo_documento": "03",
+            "serie_numero": "B001-00040",
+            "estado": "1",
+            "cliente_tipo": "1",
+            "cliente_numero": "78912345",
+            "total": 1770.00,
+            "mto_oper_gravadas": 1500.00,
+            "mto_oper_exoneradas": 0.00,
+            "mto_oper_inafectas": 0.00,
+            "mto_igv": 270.00,
+            "mto_isc": 0.00,
+            "mto_icbper": 0.00,
+            "mto_otros_cargos": 0.00
+          },
+          {
+            "tipo_documento": "07",
+            "serie_numero": "BC01-00001",
+            "estado": "1",
+            "cliente_tipo": "1",
+            "cliente_numero": "78912345",
+            "total": -590.00,
+            "mto_oper_gravadas": -500.00,
+            "mto_oper_exoneradas": 0.00,
+            "mto_oper_inafectas": 0.00,
+            "mto_igv": -90.00,
+            "mto_isc": 0.00,
+            "mto_icbper": 0.00,
+            "mto_otros_cargos": 0.00
+          }
+        ]
+      }
+    }
+  ]
+}

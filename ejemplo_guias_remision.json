@@ -1,0 +1,391 @@
+{
+  "ejemplos_guias_remision": [
+    {
+      "nombre": "Guía Remisión - Venta",
+      "descripcion": "Guía de remisión por venta de mercadería",
+      "data": {
+        "company_id": 1,
+        "branch_id": 1,
+        "serie": "T001",
+        "fecha_emision": "2025-09-04",
+        "cod_traslado": "01",
+        "des_traslado": "Venta",
+        "mod_traslado": "01",
+        "peso_bruto": 150.50,
+        "unidad_peso": "KGM",
+        "numero_bultos": 10,
+        "observaciones": "Mercadería frágil - manejar con cuidado",
+        "destinatario": {
+          "tipo_documento": "6",
+          "numero_documento": "20123456789",
+          "razon_social": "EMPRESA RECEPTORA SAC",
+          "direccion": "Av. Los Conquistadores 1500, San Isidro"
+        },
+        "direccion_origen": {
+          "direccion": "Av. Industrial 2000, Ate Vitarte",
+          "ubigeo": "150103",
+          "distrito": "Ate",
+          "provincia": "Lima",
+          "departamento": "Lima"
+        },
+        "direccion_destino": {
+          "direccion": "Av. Los Conquistadores 1500, San Isidro",
+          "ubigeo": "150131",
+          "distrito": "San Isidro",
+          "provincia": "Lima",
+          "departamento": "Lima"
+        },
+        "transportista": {
+          "tipo_documento": "6",
+          "numero_documento": "20555666777",
+          "razon_social": "TRANSPORTES RÁPIDOS SAC",
+          "numero_mtc": "MTC-001234"
+        },
+        "conductor": {
+          "tipo_documento": "1",
+          "numero_documento": "12345678",
+          "nombres": "Carlos",
+          "apellidos": "Rodriguez Mendoza",
+          "numero_licencia": "Q12345678"
+        },
+        "vehiculo": {
+          "numero_placa": "ABC-123",
+          "codigo_autorizacion": "AUT-2024-001"
+        },
+        "detalles": [
+          {
+            "codigo": "PROD001",
+            "descripcion": "Laptop HP Pavilion 15",
+            "unidad": "NIU",
+            "cantidad": 5,
+            "peso_unitario": 2.5
+          },
+          {
+            "codigo": "PROD002",
+            "descripcion": "Mouse inalámbrico",
+            "unidad": "NIU",
+            "cantidad": 10,
+            "peso_unitario": 0.15
+          },
+          {
+            "codigo": "PROD003",
+            "descripcion": "Teclado mecánico",
+            "unidad": "NIU",
+            "cantidad": 5,
+            "peso_unitario": 1.2
+          }
+        ],
+        "documentos_relacionados": [
+          {
+            "tipo_documento": "01",
+            "numero_documento": "F001-00123"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "Guía Remisión - Compra",
+      "descripcion": "Guía de remisión por compra de insumos",
+      "data": {
+        "company_id": 1,
+        "branch_id": 1,
+        "serie": "T001",
+        "fecha_emision": "2025-09-04",
+        "cod_traslado": "02",
+        "des_traslado": "Compra",
+        "mod_traslado": "01",
+        "peso_bruto": 2500.00,
+        "unidad_peso": "KGM",
+        "numero_bultos": 50,
+        "observaciones": "Materia prima para producción",
+        "remitente": {
+          "tipo_documento": "6",
+          "numero_documento": "20987654321",
+          "razon_social": "PROVEEDORES INDUSTRIALES SAC",
+          "direccion": "Av. Argentina 3000, Callao"
+        },
+        "direccion_origen": {
+          "direccion": "Av. Argentina 3000, Callao",
+          "ubigeo": "070101",
+          "distrito": "Callao",
+          "provincia": "Prov. Const. del Callao",
+          "departamento": "Callao"
+        },
+        "direccion_destino": {
+          "direccion": "Av. Industrial 2000, Ate Vitarte",
+          "ubigeo": "150103",
+          "distrito": "Ate",
+          "provincia": "Lima",
+          "departamento": "Lima"
+        },
+        "transportista": {
+          "tipo_documento": "6",
+          "numero_documento": "20777888999",
+          "razon_social": "LOGÍSTICA PESADA SAC",
+          "numero_mtc": "MTC-005678"
+        },
+        "conductor": {
+          "tipo_documento": "1",
+          "numero_documento": "87654321",
+          "nombres": "Miguel",
+          "apellidos": "Torres Vásquez",
+          "numero_licencia": "Q87654321"
+        },
+        "vehiculo": {
+          "numero_placa": "XYZ-456",
+          "codigo_autorizacion": "AUT-2024-002"
+        },
+        "detalles": [
+          {
+            "codigo": "MAT001",
+            "descripcion": "Acero estructural A36",
+            "unidad": "KGM",
+            "cantidad": 1000,
+            "peso_unitario": 1.0
+          },
+          {
+            "codigo": "MAT002",
+            "descripcion": "Soldadura E6013 3.2mm",
+            "unidad": "KGM",
+            "cantidad": 50,
+            "peso_unitario": 1.0
+          },
+          {
+            "codigo": "MAT003",
+            "descripcion": "Pintura anticorrosiva",
+            "unidad": "GLL",
+            "cantidad": 100,
+            "peso_unitario": 4.0
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "Guía Remisión - Traslado entre Establecimientos",
+      "descripcion": "Guía para traslado entre sucursales propias",
+      "data": {
+        "company_id": 1,
+        "branch_id": 1,
+        "serie": "T001",
+        "fecha_emision": "2025-09-04",
+        "cod_traslado": "08",
+        "des_traslado": "Traslado entre establecimientos de la misma empresa",
+        "mod_traslado": "01",
+        "peso_bruto": 500.75,
+        "unidad_peso": "KGM",
+        "numero_bultos": 25,
+        "observaciones": "Reposición de stock - Sucursal Miraflores",
+        "direccion_origen": {
+          "direccion": "Av. Industrial 2000, Ate Vitarte - Almacén Central",
+          "ubigeo": "150103",
+          "distrito": "Ate",
+          "provincia": "Lima",
+          "departamento": "Lima"
+        },
+        "direccion_destino": {
+          "direccion": "Av. Larco 456, Miraflores - Sucursal",
+          "ubigeo": "150122",
+          "distrito": "Miraflores",
+          "provincia": "Lima",
+          "departamento": "Lima"
+        },
+        "transportista": {
+          "tipo_documento": "6",
+          "numero_documento": "20111222333",
+          "razon_social": "COURIER EXPRESS SAC",
+          "numero_mtc": "MTC-009876"
+        },
+        "conductor": {
+          "tipo_documento": "1",
+          "numero_documento": "11223344",
+          "nombres": "Roberto",
+          "apellidos": "Silva Paredes",
+          "numero_licencia": "Q11223344"
+        },
+        "vehiculo": {
+          "numero_placa": "DEF-789",
+          "codigo_autorizacion": "AUT-2024-003"
+        },
+        "detalles": [
+          {
+            "codigo": "ELEC001",
+            "descripcion": "Smartphone Samsung A54",
+            "unidad": "NIU",
+            "cantidad": 20,
+            "peso_unitario": 0.5
+          },
+          {
+            "codigo": "ELEC002",
+            "descripcion": "Tablet Lenovo 10 pulgadas",
+            "unidad": "NIU",
+            "cantidad": 15,
+            "peso_unitario": 0.8
+          },
+          {
+            "codigo": "ACC001",
+            "descripcion": "Fundas y accesorios varios",
+            "unidad": "NIU",
+            "cantidad": 100,
+            "peso_unitario": 0.1
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "Guía Remisión - Consignación",
+      "descripción": "Guía de remisión para mercadería en consignación",
+      "data": {
+        "company_id": 1,
+        "branch_id": 1,
+        "serie": "T001",
+        "fecha_emision": "2025-09-04",
+        "cod_traslado": "04",
+        "des_traslado": "Traslado por emisor itinerante CP",
+        "mod_traslado": "01",
+        "peso_bruto": 800.25,
+        "unidad_peso": "KGM",
+        "numero_bultos": 40,
+        "observaciones": "Mercadería en consignación - 60 días",
+        "destinatario": {
+          "tipo_documento": "6",
+          "numero_documento": "20444555666",
+          "razon_social": "DISTRIBUIDORA REGIONAL SAC",
+          "direccion": "Av. Grau 1200, Arequipa"
+        },
+        "direccion_origen": {
+          "direccion": "Av. Industrial 2000, Ate Vitarte",
+          "ubigeo": "150103",
+          "distrito": "Ate",
+          "provincia": "Lima",
+          "departamento": "Lima"
+        },
+        "direccion_destino": {
+          "direccion": "Av. Grau 1200, Arequipa",
+          "ubigeo": "040101",
+          "distrito": "Arequipa",
+          "provincia": "Arequipa",
+          "departamento": "Arequipa"
+        },
+        "transportista": {
+          "tipo_documento": "6",
+          "numero_documento": "20666777888",
+          "razon_social": "TRANSPORTE INTERPROVINCIAL SAC",
+          "numero_mtc": "MTC-012345"
+        },
+        "conductor": {
+          "tipo_documento": "1",
+          "numero_documento": "55667788",
+          "nombres": "Luis",
+          "apellidos": "Mamani Quispe",
+          "numero_licencia": "Q55667788"
+        },
+        "vehiculo": {
+          "numero_placa": "GHI-012",
+          "codigo_autorizacion": "AUT-2024-004"
+        },
+        "detalles": [
+          {
+            "codigo": "FERM001",
+            "descripcion": "Herramientas eléctricas variadas",
+            "unidad": "NIU",
+            "cantidad": 25,
+            "peso_unitario": 3.5
+          },
+          {
+            "codigo": "FERM002",
+            "descripcion": "Taladros percutores",
+            "unidad": "NIU",
+            "cantidad": 10,
+            "peso_unitario": 2.8
+          },
+          {
+            "codigo": "FERM003",
+            "descripcion": "Sierras circulares",
+            "unidad": "NIU",
+            "cantidad": 8,
+            "peso_unitario": 4.2
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "Guía Remisión - Devolución",
+      "descripcion": "Guía de remisión para devolución de mercadería",
+      "data": {
+        "company_id": 1,
+        "branch_id": 1,
+        "serie": "T001",
+        "fecha_emision": "2025-09-04",
+        "cod_traslado": "05",
+        "des_traslado": "Devolución",
+        "mod_traslado": "02",
+        "peso_bruto": 85.30,
+        "unidad_peso": "KGM",
+        "numero_bultos": 5,
+        "observaciones": "Devolución por productos defectuosos",
+        "remitente": {
+          "tipo_documento": "6",
+          "numero_documento": "20123456789",
+          "razon_social": "EMPRESA CLIENTE SAC",
+          "direccion": "Av. Los Olivos 123, Lima"
+        },
+        "direccion_origen": {
+          "direccion": "Av. Los Olivos 123, Lima",
+          "ubigeo": "150101",
+          "distrito": "Lima",
+          "provincia": "Lima",
+          "departamento": "Lima"
+        },
+        "direccion_destino": {
+          "direccion": "Av. Industrial 2000, Ate Vitarte",
+          "ubigeo": "150103",
+          "distrito": "Ate",
+          "provincia": "Lima",
+          "departamento": "Lima"
+        },
+        "transportista": {
+          "tipo_documento": "1",
+          "numero_documento": "12345678",
+          "nombres": "Juan Carlos",
+          "apellidos": "Pérez López"
+        },
+        "conductor": {
+          "tipo_documento": "1",
+          "numero_documento": "12345678",
+          "nombres": "Juan Carlos",
+          "apellidos": "Pérez López",
+          "numero_licencia": "Q12345678"
+        },
+        "vehiculo": {
+          "numero_placa": "JKL-345"
+        },
+        "detalles": [
+          {
+            "codigo": "PROD004",
+            "descripcion": "Monitor LED 24 pulgadas - DEFECTUOSO",
+            "unidad": "NIU",
+            "cantidad": 3,
+            "peso_unitario": 5.2
+          },
+          {
+            "codigo": "PROD005",
+            "descripcion": "Impresora multifuncional - DEFECTUOSA",
+            "unidad": "NIU",
+            "cantidad": 2,
+            "peso_unitario": 8.5
+          }
+        ],
+        "documentos_relacionados": [
+          {
+            "tipo_documento": "01",
+            "numero_documento": "F001-00125"
+          },
+          {
+            "tipo_documento": "07",
+            "numero_documento": "FC01-00001"
+          }
+        ]
+      }
+    }
+  ]
+}

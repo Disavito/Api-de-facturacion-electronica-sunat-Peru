@@ -1,0 +1,197 @@
+{
+  "ejemplos_notas_debito": [
+    {
+      "nombre": "Nota Débito - Intereses por Mora",
+      "descripcion": "Nota de débito por cobro de intereses moratorios",
+      "data": {
+        "company_id": 1,
+        "branch_id": 1,
+        "serie": "FD01",
+        "fecha_emision": "2025-09-04",
+        "tipo_doc_afectado": "01",
+        "num_doc_afectado": "F001-00100",
+        "cod_motivo": "01",
+        "des_motivo": "Intereses por mora",
+        "moneda": "PEN",
+        "client": {
+          "tipo_documento": "6",
+          "numero_documento": "20123456789",
+          "razon_social": "CONSTRUCTORA DEL NORTE SAC",
+          "direccion": "Av. La Marina 2000, San Miguel",
+          "telefono": "01-4567890",
+          "email": "pagos@constructora.com"
+        },
+        "detalles": [
+          {
+            "codigo": "INT001",
+            "descripcion": "Intereses moratorios - Factura F001-00100",
+            "unidad": "ZZ",
+            "cantidad": 1,
+            "mto_valor_unitario": 847.46,
+            "porcentaje_igv": 18,
+            "tip_afe_igv": "10"
+          }
+        ],
+        "datos_adicionales": {
+          "fecha_vencimiento_original": "2025-07-04",
+          "dias_mora": 62,
+          "tasa_interes": "2.5% mensual",
+          "monto_principal": "S/ 25,000.00"
+        }
+      }
+    },
+    {
+      "nombre": "Nota Débito - Aumento en el Valor",
+      "descripcion": "Nota de débito por aumento en el valor de productos ya facturados",
+      "data": {
+        "company_id": 1,
+        "branch_id": 1,
+        "serie": "FD01",
+        "fecha_emision": "2025-09-04",
+        "tipo_doc_afectado": "01",
+        "num_doc_afectado": "F001-00101",
+        "cod_motivo": "02",
+        "des_motivo": "Aumento en el valor",
+        "moneda": "PEN",
+        "client": {
+          "tipo_documento": "6",
+          "numero_documento": "20987654321",
+          "razon_social": "DISTRIBUIDORA MAYORISTA SAC",
+          "direccion": "Av. Argentina 1500, Callao"
+        },
+        "detalles": [
+          {
+            "codigo": "AJUSTE001",
+            "descripcion": "Diferencia de precio - Laptop HP actualizada",
+            "unidad": "NIU",
+            "cantidad": 3,
+            "mto_valor_unitario": 200.00,
+            "porcentaje_igv": 18,
+            "tip_afe_igv": "10"
+          },
+          {
+            "codigo": "AJUSTE002",
+            "descripcion": "Ajuste por especificaciones adicionales",
+            "unidad": "ZZ",
+            "cantidad": 1,
+            "mto_valor_unitario": 150.00,
+            "porcentaje_igv": 18,
+            "tip_afe_igv": "10"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "Nota Débito - Penalidad Contractual",
+      "descripcion": "Nota de débito por penalidades según contrato",
+      "data": {
+        "company_id": 1,
+        "branch_id": 1,
+        "serie": "FD01",
+        "fecha_emision": "2025-09-04",
+        "tipo_doc_afectado": "01",
+        "num_doc_afectado": "F001-00102",
+        "cod_motivo": "03",
+        "des_motivo": "Penalidad contractual",
+        "moneda": "PEN",
+        "client": {
+          "tipo_documento": "6",
+          "numero_documento": "20555666777",
+          "razon_social": "EMPRESA DE SERVICIOS INTEGRALES SAC",
+          "direccion": "Jr. Los Andes 456, San Isidro"
+        },
+        "detalles": [
+          {
+            "codigo": "PENAL001",
+            "descripcion": "Penalidad por incumplimiento de plazo de entrega",
+            "unidad": "ZZ",
+            "cantidad": 1,
+            "mto_valor_unitario": 2000.00,
+            "porcentaje_igv": 18,
+            "tip_afe_igv": "10"
+          }
+        ],
+        "datos_adicionales": {
+          "contrato": "CONT-2025-001",
+          "clausula_aplicada": "15.2 - Penalidades",
+          "fecha_entrega_programada": "2025-08-15",
+          "fecha_entrega_real": "2025-08-30",
+          "porcentaje_penalidad": "0.5% por día"
+        }
+      }
+    },
+    {
+      "nombre": "Nota Débito - Mayores Gastos",
+      "descripcion": "Nota de débito por gastos adicionales no contemplados",
+      "data": {
+        "company_id": 1,
+        "branch_id": 1,
+        "serie": "FD01",
+        "fecha_emision": "2025-09-04",
+        "tipo_doc_afectado": "01",
+        "num_doc_afectado": "F001-00103",
+        "cod_motivo": "10",
+        "des_motivo": "Mayores gastos de la operación",
+        "moneda": "PEN",
+        "client": {
+          "tipo_documento": "6",
+          "numero_documento": "20444555666",
+          "razon_social": "LOGÍSTICA INTERNACIONAL SAC",
+          "direccion": "Av. Colonial 3000, Callao"
+        },
+        "detalles": [
+          {
+            "codigo": "GASTO001",
+            "descripcion": "Gastos adicionales de almacenaje",
+            "unidad": "ZZ",
+            "cantidad": 1,
+            "mto_valor_unitario": 500.00,
+            "porcentaje_igv": 18,
+            "tip_afe_igv": "10"
+          },
+          {
+            "codigo": "GASTO002",
+            "descripcion": "Seguro adicional para mercadería especial",
+            "unidad": "ZZ",
+            "cantidad": 1,
+            "mto_valor_unitario": 300.00,
+            "porcentaje_igv": 18,
+            "tip_afe_igv": "10"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "Nota Débito sobre Boleta",
+      "descripcion": "Nota de débito que afecta una boleta de venta",
+      "data": {
+        "company_id": 1,
+        "branch_id": 1,
+        "serie": "BD01",
+        "fecha_emision": "2025-09-04",
+        "tipo_doc_afectado": "03",
+        "num_doc_afectado": "B001-00789",
+        "cod_motivo": "02",
+        "des_motivo": "Aumento en el valor - Producto con características premium",
+        "moneda": "PEN",
+        "client": {
+          "tipo_documento": "1",
+          "numero_documento": "12345678",
+          "razon_social": "CARLOS ALBERTO MENDOZA SILVA",
+          "direccion": "Jr. Las Flores 123, Miraflores"
+        },
+        "detalles": [
+          {
+            "codigo": "DIFER001",
+            "descripcion": "Diferencia por modelo superior - Smartphone",
+            "unidad": "NIU",
+            "cantidad": 1,
+            "mto_valor_unitario": 300.00,
+            "porcentaje_igv": 18,
+            "tip_afe_igv": "10"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,452 @@
+{
+  "ejemplos_facturas": [
+    {
+      "nombre": "Factura Básica - Operación Gravada",
+      "descripcion": "Factura simple con productos gravados al 18% IGV",
+      "data": {
+        "company_id": 1,
+        "branch_id": 1,
+        "serie": "F001",
+        "fecha_emision": "2025-09-04",
+        "fecha_vencimiento": "2025-09-04",
+        "moneda": "PEN",
+        "tipo_operacion": "0101",
+        "forma_pago_tipo": "Contado",
+        "client": {
+          "tipo_documento": "6",
+          "numero_documento": "20123456789",
+          "razon_social": "EMPRESA CLIENTE SAC",
+          "nombre_comercial": "Cliente Comercial",
+          "direccion": "Av. Los Olivos 123, Lima",
+          "ubigeo": "150101",
+          "distrito": "Lima",
+          "provincia": "Lima",
+          "departamento": "Lima",
+          "telefono": "01-2345678",
+          "email": "cliente@empresa.com"
+        },
+        "detalles": [
+          {
+            "codigo": "PROD001",
+            "descripcion": "Laptop HP Pavilion 15",
+            "unidad": "NIU",
+            "cantidad": 2,
+            "mto_valor_unitario": 2500.00,
+            "porcentaje_igv": 18,
+            "tip_afe_igv": "10",
+            "codigo_producto_sunat": "43211501"
+          },
+          {
+            "codigo": "SERV001",
+            "descripcion": "Servicio de instalación y configuración",
+            "unidad": "ZZ",
+            "cantidad": 1,
+            "mto_valor_unitario": 300.00,
+            "porcentaje_igv": 18,
+            "tip_afe_igv": "10"
+          }
+        ],
+        "datos_adicionales": {
+          "observaciones": "Productos con garantía de 12 meses"
+        }
+      }
+    },
+    {
+      "nombre": "Factura con Productos Exonerados",
+      "descripcion": "Factura con productos exonerados del IGV",
+      "data": {
+        "company_id": 1,
+        "branch_id": 1,
+        "serie": "F001",
+        "fecha_emision": "2025-09-04",
+        "moneda": "PEN",
+        "tipo_operacion": "0101",
+        "forma_pago_tipo": "Contado",
+        "client": {
+          "tipo_documento": "6",
+          "numero_documento": "20987654321",
+          "razon_social": "ORGANIZACIÓN BENEFICA ABC",
+          "direccion": "Jr. Beneficencia 456",
+          "ubigeo": "150101"
+        },
+        "detalles": [
+          {
+            "codigo": "LIB001",
+            "descripcion": "Libros educativos para primaria",
+            "unidad": "NIU",
+            "cantidad": 50,
+            "mto_valor_unitario": 25.00,
+            "porcentaje_igv": 0,
+            "tip_afe_igv": "20"
+          },
+          {
+            "codigo": "MAT001",
+            "descripcion": "Material didáctico",
+            "unidad": "NIU",
+            "cantidad": 100,
+            "mto_valor_unitario": 15.00,
+            "porcentaje_igv": 0,
+            "tip_afe_igv": "20"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "Factura con Productos Inafectos",
+      "descripcion": "Factura con productos inafectos al IGV",
+      "data": {
+        "company_id": 1,
+        "branch_id": 1,
+        "serie": "F001",
+        "fecha_emision": "2025-09-04",
+        "moneda": "PEN",
+        "tipo_operacion": "0101",
+        "forma_pago_tipo": "Contado",
+        "client": {
+          "tipo_documento": "6",
+          "numero_documento": "20111222333",
+          "razon_social": "BANCO NACIONAL DEL PERÚ",
+          "direccion": "Av. República de Panamá 3055"
+        },
+        "detalles": [
+          {
+            "codigo": "SERV002",
+            "descripcion": "Servicio de consultoría financiera",
+            "unidad": "ZZ",
+            "cantidad": 1,
+            "mto_valor_unitario": 5000.00,
+            "porcentaje_igv": 0,
+            "tip_afe_igv": "30"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "Factura de Exportación",
+      "descripcion": "Factura para exportación sin IGV",
+      "data": {
+        "company_id": 1,
+        "branch_id": 1,
+        "serie": "F001",
+        "fecha_emision": "2025-09-04",
+        "moneda": "USD",
+        "tipo_operacion": "0200",
+        "forma_pago_tipo": "Contado",
+        "client": {
+          "tipo_documento": "0",
+          "numero_documento": "12345678901",
+          "razon_social": "EMPRESA EXTRANJERA LTDA",
+          "direccion": "Miami, Florida, USA"
+        },
+        "detalles": [
+          {
+            "codigo": "PROD002",
+            "descripcion": "Quinoa orgánica premium",
+            "unidad": "KGM",
+            "cantidad": 1000,
+            "mto_valor_unitario": 8.50,
+            "porcentaje_igv": 0,
+            "tip_afe_igv": "40"
+          },
+          {
+            "codigo": "PROD003",
+            "descripcion": "Café especial peruano",
+            "unidad": "KGM",
+            "cantidad": 500,
+            "mto_valor_unitario": 12.00,
+            "porcentaje_igv": 0,
+            "tip_afe_igv": "40"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "Factura a Crédito con Cuotas",
+      "descripcion": "Factura con forma de pago a crédito en 3 cuotas",
+      "data": {
+        "company_id": 1,
+        "branch_id": 1,
+        "serie": "F001",
+        "fecha_emision": "2025-09-04",
+        "fecha_vencimiento": "2025-12-04",
+        "moneda": "PEN",
+        "tipo_operacion": "0101",
+        "forma_pago_tipo": "Credito",
+        "forma_pago_cuotas": [
+          {
+            "moneda": "PEN",
+            "monto": 2000.00,
+            "fecha_pago": "2025-10-04"
+          },
+          {
+            "moneda": "PEN",
+            "monto": 2000.00,
+            "fecha_pago": "2025-11-04"
+          },
+          {
+            "moneda": "PEN",
+            "monto": 2000.00,
+            "fecha_pago": "2025-12-04"
+          }
+        ],
+        "client": {
+          "tipo_documento": "6",
+          "numero_documento": "20444555666",
+          "razon_social": "CONSTRUCTORA DEL NORTE SAC",
+          "direccion": "Av. La Marina 2000, San Miguel"
+        },
+        "detalles": [
+          {
+            "codigo": "MAQ001",
+            "descripcion": "Mezcladora de concreto industrial",
+            "unidad": "NIU",
+            "cantidad": 1,
+            "mto_valor_unitario": 5084.75,
+            "porcentaje_igv": 18,
+            "tip_afe_igv": "10"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "Factura con Detracción",
+      "descripcion": "Factura con detracción del 12% - Servicios de construcción",
+      "data": {
+        "company_id": 1,
+        "branch_id": 1,
+        "serie": "F001",
+        "fecha_emision": "2025-09-04",
+        "moneda": "PEN",
+        "tipo_operacion": "0101",
+        "forma_pago_tipo": "Contado",
+        "client": {
+          "tipo_documento": "6",
+          "numero_documento": "20777888999",
+          "razon_social": "INMOBILIARIA VERDE SAC",
+          "direccion": "Av. Javier Prado Este 4200"
+        },
+        "detalles": [
+          {
+            "codigo": "CONST001",
+            "descripcion": "Construcción de edificio residencial - Fase 1",
+            "unidad": "ZZ",
+            "cantidad": 1,
+            "mto_valor_unitario": 100000.00,
+            "porcentaje_igv": 18,
+            "tip_afe_igv": "10"
+          }
+        ],
+        "detraccion": {
+          "codigo_bien_servicio": "004",
+          "codigo_medio_pago": "001",
+          "cuenta_banco": "00-000-123456",
+          "porcentaje": 12
+        }
+      }
+    },
+    {
+      "nombre": "Factura con ISC - Productos Selectivos",
+      "descripcion": "Factura con productos afectos al Impuesto Selectivo al Consumo",
+      "data": {
+        "company_id": 1,
+        "branch_id": 1,
+        "serie": "F001",
+        "fecha_emision": "2025-09-04",
+        "moneda": "PEN",
+        "tipo_operacion": "0101",
+        "forma_pago_tipo": "Contado",
+        "client": {
+          "tipo_documento": "6",
+          "numero_documento": "20123456789",
+          "razon_social": "DISTRIBUIDORA PREMIUM SAC",
+          "direccion": "Av. Argentina 1500, Callao"
+        },
+        "detalles": [
+          {
+            "codigo": "BEB001",
+            "descripcion": "Whisky Premium 18 años",
+            "unidad": "NIU",
+            "cantidad": 24,
+            "mto_valor_unitario": 180.00,
+            "porcentaje_igv": 18,
+            "porcentaje_isc": 30,
+            "tip_afe_igv": "10"
+          },
+          {
+            "codigo": "CIG001",
+            "descripcion": "Cigarrillos importados",
+            "unidad": "NIU",
+            "cantidad": 10,
+            "mto_valor_unitario": 25.00,
+            "porcentaje_igv": 18,
+            "porcentaje_isc": 160,
+            "tip_afe_igv": "10"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "Factura con ICBPER",
+      "descripcion": "Factura con productos afectos al Impuesto a las Bolsas Plásticas",
+      "data": {
+        "company_id": 1,
+        "branch_id": 1,
+        "serie": "F001",
+        "fecha_emision": "2025-09-04",
+        "moneda": "PEN",
+        "tipo_operacion": "0101",
+        "forma_pago_tipo": "Contado",
+        "client": {
+          "tipo_documento": "1",
+          "numero_documento": "12345678",
+          "razon_social": "JUAN CARLOS PEREZ RODRIGUEZ",
+          "direccion": "Jr. Los Pinos 123, San Borja"
+        },
+        "detalles": [
+          {
+            "codigo": "PROD004",
+            "descripcion": "Arroz superior x 5kg",
+            "unidad": "NIU",
+            "cantidad": 10,
+            "mto_valor_unitario": 15.00,
+            "porcentaje_igv": 18,
+            "tip_afe_igv": "10"
+          },
+          {
+            "codigo": "BOLSA001",
+            "descripcion": "Bolsa plástica",
+            "unidad": "NIU",
+            "cantidad": 15,
+            "mto_valor_unitario": 0.00,
+            "porcentaje_igv": 0,
+            "tip_afe_igv": "11",
+            "factor_icbper": 0.50
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "Factura con Productos Gratuitos",
+      "descripcion": "Factura con operaciones gratuitas y muestras comerciales",
+      "data": {
+        "company_id": 1,
+        "branch_id": 1,
+        "serie": "F001",
+        "fecha_emision": "2025-09-04",
+        "moneda": "PEN",
+        "tipo_operacion": "0101",
+        "forma_pago_tipo": "Contado",
+        "client": {
+          "tipo_documento": "6",
+          "numero_documento": "20666777888",
+          "razon_social": "FARMACIA UNIVERSAL SAC",
+          "direccion": "Av. Brasil 2500, Magdalena"
+        },
+        "detalles": [
+          {
+            "codigo": "MED001",
+            "descripcion": "Paracetamol 500mg x 100 tabletas",
+            "unidad": "NIU",
+            "cantidad": 50,
+            "mto_valor_unitario": 8.00,
+            "porcentaje_igv": 18,
+            "tip_afe_igv": "10"
+          },
+          {
+            "codigo": "MUESTRA001",
+            "descripcion": "Muestra gratuita - Vitamina C",
+            "unidad": "NIU",
+            "cantidad": 20,
+            "mto_valor_unitario": 0.00,
+            "mto_valor_gratuito": 5.00,
+            "porcentaje_igv": 18,
+            "tip_afe_igv": "11"
+          }
+        ]
+      }
+    },
+    {
+      "nombre": "Factura Mixta Compleja",
+      "descripcion": "Factura con múltiples tipos de afectaciones, percepción y anticipos",
+      "data": {
+        "company_id": 1,
+        "branch_id": 1,
+        "serie": "F001",
+        "fecha_emision": "2025-09-04",
+        "fecha_vencimiento": "2025-10-04",
+        "moneda": "PEN",
+        "tipo_operacion": "0101",
+        "forma_pago_tipo": "Credito",
+        "forma_pago_cuotas": [
+          {
+            "moneda": "PEN",
+            "monto": 6000.00,
+            "fecha_pago": "2025-10-04"
+          }
+        ],
+        "client": {
+          "tipo_documento": "6",
+          "numero_documento": "20555666777",
+          "razon_social": "MINERA DEL SUR SAC",
+          "direccion": "Av. El Sol 1000, Arequipa",
+          "ubigeo": "040101"
+        },
+        "detalles": [
+          {
+            "codigo": "EQ001",
+            "descripcion": "Equipo de perforación industrial",
+            "unidad": "NIU",
+            "cantidad": 1,
+            "mto_valor_unitario": 50000.00,
+            "porcentaje_igv": 18,
+            "tip_afe_igv": "10"
+          },
+          {
+            "codigo": "SERV003",
+            "descripcion": "Servicio de mantenimiento especializado",
+            "unidad": "ZZ",
+            "cantidad": 1,
+            "mto_valor_unitario": 8000.00,
+            "porcentaje_igv": 18,
+            "tip_afe_igv": "10"
+          },
+          {
+            "codigo": "REP001",
+            "descripcion": "Repuestos exonerados",
+            "unidad": "NIU",
+            "cantidad": 10,
+            "mto_valor_unitario": 150.00,
+            "porcentaje_igv": 0,
+            "tip_afe_igv": "20"
+          }
+        ],
+        "percepcion": {
+          "cod_regimen": "01",
+          "tasa": 2.00,
+          "monto_base": 68440.00,
+          "monto": 1368.80,
+          "monto_total": 69808.80
+        },
+        "anticipos": [
+          {
+            "numero_documento": "F001-00001",
+            "tipo_documento": "02",
+            "monto": 10000.00,
+            "moneda": "PEN"
+          }
+        ],
+        "guias": [
+          {
+            "numero": "T001-00001",
+            "tipo_documento": "09"
+          }
+        ],
+        "datos_adicionales": {
+          "orden_compra": "OC-2025-001",
+          "condiciones_pago": "30 días",
+          "observaciones": "Incluye instalación y capacitación"
+        }
+      }
+    }
+  ]
+}
