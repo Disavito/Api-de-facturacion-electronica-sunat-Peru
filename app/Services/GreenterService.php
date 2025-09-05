@@ -24,6 +24,10 @@ use Greenter\Model\Despatch\Shipment;
 use Greenter\Model\Despatch\Transportist;
 use Greenter\Model\Despatch\Driver;
 use Greenter\Model\Despatch\Vehicle;
+use Greenter\Model\Retention\Retention;
+use Greenter\Model\Retention\RetentionDetail;
+use Greenter\Model\Retention\Payment;
+use Greenter\Model\Retention\Exchange;
 use Greenter\Ws\Services\SunatEndpoints;
 use Illuminate\Support\Facades\Log;
 use Exception;
@@ -253,6 +257,12 @@ class GreenterService
             $invoice->setIcbper($invoiceData['mto_icbper']);
         }
 
+        // IVAP (Impuesto a la Venta del Arroz Pilado)
+        if (isset($invoiceData['mto_base_ivap']) && $invoiceData['mto_base_ivap'] > 0) {
+            $invoice->setMtoBaseIvap($invoiceData['mto_base_ivap'])
+                    ->setMtoIvap($invoiceData['mto_ivap'] ?? 0);
+        }
+
         // IGV Gratuitas (solo para operaciones gratuitas)
         if (isset($invoiceData['mto_igv_gratuitas']) && $invoiceData['mto_igv_gratuitas'] > 0) {
             $invoice->setMtoIGVGratuitas($invoiceData['mto_igv_gratuitas']);
@@ -423,6 +433,91 @@ class GreenterService
             return $this->see->getXmlSigned($document);
         } catch (Exception $e) {
             return null;
+        }
+    }
+
+    public function createRetention($retentionData)
+    {
+        $retention = new Retention();
+        
+        // Configuración básica
+        $retention->setSerie($retentionData['serie'])
+                  ->setCorrelativo($retentionData['correlativo'])
+                  ->setFechaEmision(new \DateTime($retentionData['fecha_emision']))
+                  ->setCompany($this->getGreenterCompany())
+                  ->setProveedor($this->getGreenterClient($retentionData['proveedor']))
+                  ->setRegimen($retentionData['regimen'])
+                  ->setTasa($retentionData['tasa'])
+                  ->setObservacion($retentionData['observacion'] ?? '')
+                  ->setImpRetenido($retentionData['imp_retenido'])
+                  ->setImpPagado($retentionData['imp_pagado']);
+
+        // Crear detalles de retención
+        $details = [];
+        foreach ($retentionData['detalles'] as $detalleData) {
+            $detail = new RetentionDetail();
+            $detail->setTipoDoc($detalleData['tipo_doc'])
+                   ->setNumDoc($detalleData['num_doc'])
+                   ->setFechaEmision(new \DateTime($detalleData['fecha_emision']))
+                   ->setFechaRetencion(new \DateTime($detalleData['fecha_retencion']))
+                   ->setMoneda($detalleData['moneda'])
+                   ->setImpTotal($detalleData['imp_total'])
+                   ->setImpPagar($detalleData['imp_pagar'])
+                   ->setImpRetenido($detalleData['imp_retenido']);
+
+            // Crear pagos
+            $pagos = [];
+            foreach ($detalleData['pagos'] as $pagoData) {
+                $pago = new Payment();
+                $pago->setMoneda($pagoData['moneda'])
+                     ->setFecha(new \DateTime($pagoData['fecha']))
+                     ->setImporte($pagoData['importe']);
+                $pagos[] = $pago;
+            }
+            $detail->setPagos($pagos);
+
+            // Crear tipo de cambio
+            $exchange = new Exchange();
+            $exchange->setFecha(new \DateTime($detalleData['tipo_cambio']['fecha']))
+                     ->setFactor($detalleData['tipo_cambio']['factor'])
+                     ->setMonedaObj($detalleData['tipo_cambio']['moneda_obj'])
+                     ->setMonedaRef($detalleData['tipo_cambio']['moneda_ref']);
+            $detail->setTipoCambio($exchange);
+
+            $details[] = $detail;
+        }
+
+        $retention->setDetails($details);
+        
+        return $retention;
+    }
+
+    public function sendRetention($retention)
+    {
+        try {
+            // Configurar endpoint específico para retenciones
+            $this->see->setService(SunatEndpoints::RETENCION_BETA);
+            
+            $result = $this->see->send($retention);
+            
+            return [
+                'success' => $result->isSuccess(),
+                'xml' => $this->see->getFactory()->getLastXml(),
+                'cdr_response' => $result->isSuccess() ? $result->getCdrResponse() : null,
+                'cdr_zip' => $result->isSuccess() ? $result->getCdrZip() : null,
+                'error' => $result->isSuccess() ? null : $result->getError()
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'xml' => null,
+                'cdr_response' => null,
+                'cdr_zip' => null,
+                'error' => (object)[
+                    'code' => 'EXCEPTION',
+                    'message' => $e->getMessage()
+                ]
+            ];
         }
     }
 

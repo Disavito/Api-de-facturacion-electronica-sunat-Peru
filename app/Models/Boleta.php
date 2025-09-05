@@ -30,6 +30,8 @@ class Boleta extends Model
         'mto_oper_inafectas',
         'mto_oper_gratuitas',
         'mto_igv',
+        'mto_base_ivap',
+        'mto_ivap',
         'mto_isc',
         'mto_icbper',
         'total_impuestos',

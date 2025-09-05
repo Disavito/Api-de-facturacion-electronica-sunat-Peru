@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\BoletaController;
 use App\Http\Controllers\Api\DailySummaryController;
 use App\Http\Controllers\Api\CreditNoteController;
 use App\Http\Controllers\Api\DebitNoteController;
+use App\Http\Controllers\Api\RetentionController;
 use App\Http\Controllers\Api\PdfController;
 
 Route::get('/user', function (Request $request) {
@@ -97,6 +98,18 @@ Route::prefix('v1')->group(function () {
         
         // Catálogo de motivos
         Route::get('/catalogs/motivos', [DebitNoteController::class, 'getMotivos']);
+    });
+
+    // Comprobantes de Retención
+    Route::prefix('retentions')->group(function () {
+        Route::get('/', [RetentionController::class, 'index']);
+        Route::post('/', [RetentionController::class, 'store']);
+        Route::get('/{id}', [RetentionController::class, 'show']);
+        Route::post('/{id}/send-sunat', [RetentionController::class, 'sendToSunat']);
+        Route::get('/{id}/download-xml', [RetentionController::class, 'downloadXml']);
+        Route::get('/{id}/download-cdr', [RetentionController::class, 'downloadCdr']);
+        Route::get('/{id}/download-pdf', [RetentionController::class, 'downloadPdf']);
+        Route::post('/{id}/generate-pdf', [RetentionController::class, 'generatePdf']);
     });
     
 });

@@ -51,7 +51,7 @@ class StoreInvoiceRequest extends FormRequest
             'detalles.*.mto_valor_unitario' => 'required|numeric|min:0',
             'detalles.*.porcentaje_igv' => 'nullable|numeric|min:0',
             'detalles.*.mto_valor_gratuito' => 'nullable|numeric|min:0',
-            'detalles.*.tip_afe_igv' => 'nullable|string|in:10,20,30,40,11,12,13,14,15,16,17',
+            'detalles.*.tip_afe_igv' => 'nullable|string|in:10,11,12,13,14,15,16,17,20,21,30,31,32,33,34,35,36,40',
             'detalles.*.codigo_producto_sunat' => 'nullable|string|max:50',
 
             // Detracción (opcional)

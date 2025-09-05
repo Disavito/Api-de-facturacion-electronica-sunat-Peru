@@ -33,6 +33,8 @@ class Invoice extends Model
         'mto_oper_gratuitas',
         'mto_igv_gratuitas',
         'mto_igv',
+        'mto_base_ivap',
+        'mto_ivap',
         'mto_isc',
         'mto_icbper',
         'mto_otros_tributos',

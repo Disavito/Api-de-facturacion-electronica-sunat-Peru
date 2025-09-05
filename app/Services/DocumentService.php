@@ -10,6 +10,7 @@ use App\Models\Boleta;
 use App\Models\CreditNote;
 use App\Models\DebitNote;
 use App\Models\DailySummary;
+use App\Models\Retention;
 use App\Services\GreenterService;
 use App\Services\FileService;
 use App\Services\PdfService;
@@ -81,6 +82,8 @@ class DocumentService
                 'mto_oper_gratuitas' => $totals['mto_oper_gratuitas'],
                 'mto_igv_gratuitas' => $totals['mto_igv_gratuitas'],
                 'mto_igv' => $totals['mto_igv'],
+                'mto_base_ivap' => $totals['mto_base_ivap'],
+                'mto_ivap' => $totals['mto_ivap'],
                 'mto_isc' => $totals['mto_isc'],
                 'mto_icbper' => $totals['mto_icbper'],
                 'mto_otros_tributos' => $totals['mto_otros_tributos'],
@@ -158,7 +161,7 @@ class DocumentService
                 'sub_total' => $totals['sub_total'],
                 'mto_imp_venta' => $totals['mto_imp_venta'],
                 'detalles' => $data['detalles'],
-                'leyendas' => $this->generateLegends($totals['mto_imp_venta'], $data['moneda'] ?? 'PEN'),
+                'leyendas' => $this->generateLegends($totals['mto_imp_venta'], $data['moneda'] ?? 'PEN', $data),
                 'datos_adicionales' => $data['datos_adicionales'] ?? null,
                 'usuario_creacion' => $data['usuario_creacion'] ?? null,
             ]);
@@ -297,6 +300,8 @@ class DocumentService
             'mto_oper_gratuitas' => 0,
             'mto_igv_gratuitas' => 0,
             'mto_igv' => 0,
+            'mto_base_ivap' => 0,  // Base imponible IVAP
+            'mto_ivap' => 0,       // Monto IVAP
             'mto_isc' => 0,
             'mto_icbper' => 0,
             'mto_otros_tributos' => 0,
@@ -347,17 +352,19 @@ class DocumentService
             $igv = 0;
             if ($tipAfeIgv === '10') { // Gravado - paga IGV
                 $igv = round($mtoBaseIgv * ($porcentajeIgv / 100), 2);
+            } elseif ($tipAfeIgv === '17') { // IVAP - paga IVAP (4%)
+                $igv = round($mtoBaseIgv * ($porcentajeIgv / 100), 2); // IVAP se maneja igual que IGV
             }
             // Para '20' (exonerado), '30' (inafecto), '40' (exportación): IGV = 0 pero base = valor_venta
 
             $totalImpuestos = $igv + $isc + $icbper;
             $mtoPrecioUnitario = $mtoValorUnitario;
-            if ($tipAfeIgv === '10') {
+            if ($tipAfeIgv === '10' || $tipAfeIgv === '17') { // Incluir IVAP
                 $mtoPrecioUnitario = round(($mtoValorVenta + $totalImpuestos) / $cantidad, 2);
             }
 
-            // Manejar operaciones gratuitas
-            if (in_array($tipAfeIgv, ['11', '12', '13', '14', '15', '16', '17', '31', '32', '33', '34', '35', '36'])) {
+            // Manejar operaciones gratuitas (EXCLUIR '17' que es IVAP, NO gratuito)
+            if (in_array($tipAfeIgv, ['11', '12', '13', '14', '15', '16', '31', '32', '33', '34', '35', '36'])) {
                 $mtoValorGratuito = $detalle['mto_valor_gratuito'] ?? $detalle['mto_valor_unitario'];
                 $mtoValorVenta = $cantidad * $mtoValorGratuito;
                 $mtoBaseIgv = $mtoValorVenta;
@@ -406,10 +413,16 @@ class DocumentService
 
             // Clasificar según tipo de afectación IGV
             switch ($tipAfeIgv) {
-                case '10': // Gravado
+                case '10': // Gravado - IGV
                     $totals['mto_oper_gravadas'] += $mtoValorVenta;
                     $totals['valor_venta'] += $mtoValorVenta;
                     $totals['mto_igv'] += $igv;
+                    break;
+                case '17': // Gravado - IVAP
+                    $totals['mto_base_ivap'] += $mtoValorVenta;  // Base IVAP específica
+                    $totals['mto_ivap'] += $igv;                 // Monto IVAP específico
+                    $totals['valor_venta'] += $mtoValorVenta;    // Valor venta total
+                    // NO acumular en mto_oper_gravadas ni mto_igv para IVAP
                     break;
                 case '20': // Exonerado
                     $totals['mto_oper_exoneradas'] += $mtoValorVenta;
@@ -452,8 +465,8 @@ class DocumentService
             $totals['sub_total'] = 0;
             $totals['mto_imp_venta'] = 0;
         } else {
-            // Factura normal o mixta: incluir impuestos normalmente
-            $totals['total_impuestos'] = $totals['mto_igv'] + $totals['mto_isc'] + $totals['mto_icbper'];
+            // Factura normal o mixta: incluir impuestos normalmente (IGV + IVAP + ISC + ICBPER)
+            $totals['total_impuestos'] = $totals['mto_igv'] + $totals['mto_ivap'] + $totals['mto_isc'] + $totals['mto_icbper'];
             $totals['sub_total'] = $totals['valor_venta'] + $totals['total_impuestos'];
             $totals['mto_imp_venta'] = $totals['sub_total'] - $totalAnticipos;
         }
@@ -529,6 +542,14 @@ class DocumentService
             ];
         }
         
+        // Leyenda 2007: IVAP (Operaciones con arroz pilado)
+        if (isset($data['detalles']) && $this->hasIvapItems($data['detalles'])) {
+            $leyendas[] = [
+                'code' => '2007',
+                'value' => 'OPERACIÓN SUJETA AL IVAP'
+            ];
+        }
+        
         return $leyendas;
     }
     
@@ -536,7 +557,18 @@ class DocumentService
     {
         foreach ($detalles as $detalle) {
             $tipAfeIgv = $detalle['tip_afe_igv'] ?? '';
-            if (in_array($tipAfeIgv, ['11', '12', '13', '14', '15', '16', '17', '31', '32', '33', '34', '35', '36'])) {
+            if (in_array($tipAfeIgv, ['11', '12', '13', '14', '15', '16', '31', '32', '33', '34', '35', '36'])) { // Excluir '17' (IVAP)
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    protected function hasIvapItems(array $detalles): bool
+    {
+        foreach ($detalles as $detalle) {
+            $tipAfeIgv = $detalle['tip_afe_igv'] ?? '';
+            if ($tipAfeIgv === '17') { // IVAP
                 return true;
             }
         }
@@ -1362,5 +1394,118 @@ class DocumentService
     public function generateDispatchGuidePdf(DispatchGuide $dispatchGuide): void
     {
         $this->generateDocumentPdf($dispatchGuide, 'dispatch-guide');
+    }
+
+    public function createRetention(array $data): Retention
+    {
+        return DB::transaction(function () use ($data) {
+            // Validar y obtener entidades
+            $company = Company::findOrFail($data['company_id']);
+            $branch = Branch::where('company_id', $company->id)
+                           ->where('id', $data['branch_id'])
+                           ->firstOrFail();
+            
+            // Crear o buscar el proveedor
+            $proveedor = $this->getOrCreateClient($data['proveedor']);
+            
+            // Obtener siguiente correlativo (tipo '20' para retenciones)
+            $serie = $data['serie'];
+            $correlativo = $branch->getNextCorrelative('20', $serie);
+            
+            // Crear la retención
+            $retention = Retention::create([
+                'company_id' => $data['company_id'],
+                'branch_id' => $data['branch_id'],
+                'proveedor_id' => $proveedor->id,
+                'serie' => $data['serie'],
+                'correlativo' => $correlativo,
+                'fecha_emision' => $data['fecha_emision'],
+                'regimen' => $data['regimen'],
+                'tasa' => $data['tasa'],
+                'observacion' => $data['observacion'] ?? '',
+                'imp_retenido' => $data['imp_retenido'],
+                'imp_pagado' => $data['imp_pagado'],
+                'moneda' => $data['moneda'],
+                'detalles' => $data['detalles'],
+                'estado_sunat' => 'PENDIENTE'
+            ]);
+
+            return $retention;
+        });
+    }
+
+    public function sendRetentionToSunat(Retention $retention): array
+    {
+        try {
+            $greenterService = new GreenterService($retention->company);
+            
+            // Preparar datos para Greenter
+            $retentionData = [
+                'company_id' => $retention->company_id,
+                'serie' => $retention->serie,
+                'correlativo' => $retention->correlativo,
+                'fecha_emision' => $retention->fecha_emision->format('Y-m-d'),
+                'regimen' => $retention->regimen,
+                'tasa' => $retention->tasa,
+                'observacion' => $retention->observacion,
+                'imp_retenido' => $retention->imp_retenido,
+                'imp_pagado' => $retention->imp_pagado,
+                'proveedor' => [
+                    'tipo_documento' => $retention->proveedor->tipo_documento,
+                    'numero_documento' => $retention->proveedor->numero_documento,
+                    'razon_social' => $retention->proveedor->razon_social,
+                    'nombre_comercial' => $retention->proveedor->nombre_comercial,
+                    'direccion' => $retention->proveedor->direccion,
+                    'ubigeo' => $retention->proveedor->ubigeo,
+                    'distrito' => $retention->proveedor->distrito,
+                    'provincia' => $retention->proveedor->provincia,
+                    'departamento' => $retention->proveedor->departamento,
+                    'telefono' => $retention->proveedor->telefono,
+                    'email' => $retention->proveedor->email,
+                ],
+                'detalles' => $retention->detalles
+            ];
+
+            // Crear documento Greenter
+            $greenterRetention = $greenterService->createRetention($retentionData);
+            
+            // Enviar a SUNAT
+            $result = $greenterService->sendRetention($greenterRetention);
+            
+            // Guardar archivos
+            if ($result['xml']) {
+                $retention->xml_path = $this->fileService->saveXml($retention, $result['xml'], 'retention');
+            }
+            
+            if ($result['success'] && $result['cdr_zip']) {
+                $retention->cdr_path = $this->fileService->saveCdr($retention, $result['cdr_zip'], 'retention');
+                $retention->hash_cdr = $result['cdr_response']->getId() ?? '';
+                $retention->estado_sunat = 'ACEPTADO';
+            } else {
+                $retention->estado_sunat = 'RECHAZADO';
+            }
+            
+            $retention->save();
+            
+            return [
+                'success' => $result['success'],
+                'document' => $retention->fresh(['company', 'branch', 'proveedor']),
+                'cdr_response' => $result['cdr_response'] ?? null,
+                'error' => $result['error'] ?? null,
+                'respuesta_sunat' => $result['error'] ? json_encode($result['error']) : null
+            ];
+
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'document' => $retention,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    public function generateRetentionPdf(Retention $retention): void
+    {
+        $this->generateDocumentPdf($retention, 'retention');
     }
 }
