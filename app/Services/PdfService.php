@@ -2,10 +2,15 @@
 
 namespace App\Services;
 
-
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\Facades\Storage;
 use Dompdf\Dompdf;
 use Dompdf\Options;
+use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\Image\SvgImageBackEnd;
+use BaconQrCode\Renderer\RendererStyle\RendererStyle;
+use BaconQrCode\Writer;
+use Exception;
 
 class PdfService
 {
@@ -97,10 +102,27 @@ class PdfService
 
     protected function prepareInvoiceData($invoice): array
     {
-        // Preparar datos del cliente con valores por defecto
-        $clientData = $invoice->client_data ?? json_decode($invoice->client_json, true) ?? [];
-        if (!is_array($clientData)) {
-            $clientData = [];
+        // Preparar datos del cliente - primero intentar desde la relación, luego desde campos JSON
+        $clientModel = $invoice->client;
+        $clientData = [];
+        
+        if ($clientModel) {
+            // Usar datos del modelo Client relacionado
+            $clientData = [
+                'razon_social' => $clientModel->razon_social,
+                'tipo_documento' => $clientModel->tipo_documento,
+                'numero_documento' => $clientModel->numero_documento,
+                'direccion' => $clientModel->direccion,
+                'ubigeo' => $clientModel->ubigeo,
+                'distrito' => $clientModel->distrito,
+                'provincia' => $clientModel->provincia,
+                'departamento' => $clientModel->departamento,
+                'telefono' => $clientModel->telefono,
+                'email' => $clientModel->email,
+            ];
+        } else {
+            // Fallback: intentar desde campos JSON si no hay relación
+            $clientData = $this->safeJsonDecode($invoice->client_data ?? $invoice->client_json ?? '[]');
         }
         
         // Valores por defecto para cliente
@@ -113,13 +135,16 @@ class PdfService
             'distrito' => '',
             'provincia' => '',
             'departamento' => '',
+            'telefono' => '',
+            'email' => '',
         ], $clientData);
 
-        // Preparar detalles con valores por defecto
-        $detalles = $invoice->detalles ?? json_decode($invoice->detalles_json, true) ?? [];
-        if (!is_array($detalles)) {
-            $detalles = [];
-        }
+        // Preparar detalles - manejar tanto arrays como JSON strings
+        $detalles = $this->safeJsonDecode($invoice->detalles ?? $invoice->detalles_json ?? '[]');
+
+        // Generar QR Code
+        $qrData = $this->generateQRData($invoice);
+        $qrBase64 = $this->generateQRCode($qrData);
 
         return [
             'document' => $invoice,
@@ -131,31 +156,101 @@ class PdfService
             'fecha_emision' => $invoice->fecha_emision ? $invoice->fecha_emision->format('d/m/Y') : date('d/m/Y'),
             'fecha_vencimiento' => $invoice->fecha_vencimiento ? $invoice->fecha_vencimiento->format('d/m/Y') : null,
             'tipo_documento_nombre' => 'FACTURA ELECTRÓNICA',
+            'qr_code' => $qrBase64,
+            'hash' => $invoice->hash_cdr ?? $invoice->valor_resumen ?? '',
+            'total_en_letras' => $this->numeroALetras($invoice->mto_imp_venta ?? 0),
         ];
     }
 
     protected function prepareBoletaData($boleta): array
     {
+        // Preparar datos del cliente - primero intentar desde la relación, luego desde campos JSON
+        $clientModel = $boleta->client;
+        $clientData = [];
+        
+        if ($clientModel) {
+            // Usar datos del modelo Client relacionado
+            $clientData = [
+                'razon_social' => $clientModel->razon_social,
+                'tipo_documento' => $clientModel->tipo_documento,
+                'numero_documento' => $clientModel->numero_documento,
+                'direccion' => $clientModel->direccion,
+                'telefono' => $clientModel->telefono,
+                'email' => $clientModel->email,
+            ];
+        } else {
+            // Fallback: intentar desde campos JSON si no hay relación
+            $clientData = $this->safeJsonDecode($boleta->client_data ?? $boleta->client_json ?? '[]');
+        }
+        
+        $client = array_merge([
+            'razon_social' => 'CLIENTE',
+            'tipo_documento' => '1',
+            'numero_documento' => 'N/A',
+            'direccion' => '',
+            'telefono' => '',
+            'email' => '',
+        ], $clientData);
+
+        // Generar QR Code
+        $qrData = $this->generateQRData($boleta);
+        $qrBase64 = $this->generateQRCode($qrData);
+
         return [
             'document' => $boleta,
             'company' => $boleta->company,
             'branch' => $boleta->branch,
-            'client' => $boleta->client_data ?? json_decode($boleta->client_json, true),
-            'detalles' => $boleta->detalles ?? json_decode($boleta->detalles_json, true),
+            'client' => $client,
+            'detalles' => $this->safeJsonDecode($boleta->detalles ?? $boleta->detalles_json ?? '[]'),
             'totales' => $this->calculateBoletaTotals($boleta),
             'fecha_emision' => $boleta->fecha_emision->format('d/m/Y'),
             'tipo_documento_nombre' => 'BOLETA DE VENTA ELECTRÓNICA',
+            'qr_code' => $qrBase64,
+            'hash' => $boleta->hash_cdr ?? $boleta->valor_resumen ?? '',
+            'total_en_letras' => $this->numeroALetras($boleta->mto_imp_venta ?? 0),
         ];
     }
 
     protected function prepareCreditNoteData($creditNote): array
     {
+        // Preparar datos del cliente - primero intentar desde la relación, luego desde campos JSON
+        $clientModel = $creditNote->client;
+        $clientData = [];
+        
+        if ($clientModel) {
+            // Usar datos del modelo Client relacionado
+            $clientData = [
+                'razon_social' => $clientModel->razon_social,
+                'tipo_documento' => $clientModel->tipo_documento,
+                'numero_documento' => $clientModel->numero_documento,
+                'direccion' => $clientModel->direccion,
+                'telefono' => $clientModel->telefono,
+                'email' => $clientModel->email,
+            ];
+        } else {
+            // Fallback: intentar desde campos JSON si no hay relación
+            $clientData = $this->safeJsonDecode($creditNote->client_data ?? $creditNote->client_json ?? '[]');
+        }
+        
+        $client = array_merge([
+            'razon_social' => 'CLIENTE',
+            'tipo_documento' => '1',
+            'numero_documento' => 'N/A',
+            'direccion' => '',
+            'telefono' => '',
+            'email' => '',
+        ], $clientData);
+
+        // Generar QR Code
+        $qrData = $this->generateQRData($creditNote);
+        $qrBase64 = $this->generateQRCode($qrData);
+
         return [
             'document' => $creditNote,
             'company' => $creditNote->company,
             'branch' => $creditNote->branch,
-            'client' => $creditNote->client_data ?? json_decode($creditNote->client_json, true),
-            'detalles' => $creditNote->detalles ?? json_decode($creditNote->detalles_json, true),
+            'client' => $client,
+            'detalles' => $this->safeJsonDecode($creditNote->detalles ?? $creditNote->detalles_json ?? '[]'),
             'totales' => $this->calculateCreditNoteTotals($creditNote),
             'fecha_emision' => $creditNote->fecha_emision->format('d/m/Y'),
             'tipo_documento_nombre' => 'NOTA DE CRÉDITO ELECTRÓNICA',
@@ -167,17 +262,52 @@ class PdfService
                 'codigo' => $creditNote->cod_motivo,
                 'descripcion' => $creditNote->des_motivo,
             ],
+            'qr_code' => $qrBase64,
+            'hash' => $creditNote->hash_cdr ?? $creditNote->valor_resumen ?? '',
+            'total_en_letras' => $this->numeroALetras($creditNote->mto_imp_venta ?? 0),
         ];
     }
 
     protected function prepareDebitNoteData($debitNote): array
     {
+        // Preparar datos del cliente - primero intentar desde la relación, luego desde campos JSON
+        $clientModel = $debitNote->client;
+        $clientData = [];
+        
+        if ($clientModel) {
+            // Usar datos del modelo Client relacionado
+            $clientData = [
+                'razon_social' => $clientModel->razon_social,
+                'tipo_documento' => $clientModel->tipo_documento,
+                'numero_documento' => $clientModel->numero_documento,
+                'direccion' => $clientModel->direccion,
+                'telefono' => $clientModel->telefono,
+                'email' => $clientModel->email,
+            ];
+        } else {
+            // Fallback: intentar desde campos JSON si no hay relación
+            $clientData = $this->safeJsonDecode($debitNote->client_data ?? $debitNote->client_json ?? '[]');
+        }
+        
+        $client = array_merge([
+            'razon_social' => 'CLIENTE',
+            'tipo_documento' => '1',
+            'numero_documento' => 'N/A',
+            'direccion' => '',
+            'telefono' => '',
+            'email' => '',
+        ], $clientData);
+
+        // Generar QR Code
+        $qrData = $this->generateQRData($debitNote);
+        $qrBase64 = $this->generateQRCode($qrData);
+
         return [
             'document' => $debitNote,
             'company' => $debitNote->company,
             'branch' => $debitNote->branch,
-            'client' => $debitNote->client_data ?? json_decode($debitNote->client_json, true),
-            'detalles' => $debitNote->detalles ?? json_decode($debitNote->detalles_json, true),
+            'client' => $client,
+            'detalles' => $this->safeJsonDecode($debitNote->detalles ?? $debitNote->detalles_json ?? '[]'),
             'totales' => $this->calculateDebitNoteTotals($debitNote),
             'fecha_emision' => $debitNote->fecha_emision->format('d/m/Y'),
             'tipo_documento_nombre' => 'NOTA DE DÉBITO ELECTRÓNICA',
@@ -189,6 +319,9 @@ class PdfService
                 'codigo' => $debitNote->cod_motivo,
                 'descripcion' => $debitNote->des_motivo,
             ],
+            'qr_code' => $qrBase64,
+            'hash' => $debitNote->hash_cdr ?? $debitNote->valor_resumen ?? '',
+            'total_en_letras' => $this->numeroALetras($debitNote->mto_imp_venta ?? 0),
         ];
     }
 
@@ -211,10 +344,7 @@ class PdfService
 
     protected function calculateInvoiceTotals($invoice): array
     {
-        $detalles = $invoice->detalles ?? json_decode($invoice->detalles_json, true) ?? [];
-        if (!is_array($detalles)) {
-            $detalles = [];
-        }
+        $detalles = $this->safeJsonDecode($invoice->detalles ?? $invoice->detalles_json ?? '[]');
         
         $subtotal = 0;
         $igv = 0;
@@ -506,5 +636,118 @@ class PdfService
             'moneda' => $dailySummary->moneda ?? 'PEN',
             'moneda_nombre' => $this->getMonedaNombre($dailySummary->moneda ?? 'PEN'),
         ];
+    }
+
+    /**
+     * Genera los datos para el código QR según estándar SUNAT
+     */
+    protected function generateQRData($document): string
+    {
+        // Formato QR SUNAT: RUC|TIPO_DOC|SERIE|NUMERO|MTO_IGV|MTO_TOTAL|FECHA_EMISION|TIPO_DOC_CLIENTE|NUM_DOC_CLIENTE|
+        $company = $document->company;
+        
+        // Obtener datos del cliente
+        $client = [];
+        if ($document->client) {
+            $client = [
+                'tipo_documento' => $document->client->tipo_documento,
+                'numero_documento' => $document->client->numero_documento,
+            ];
+        } else {
+            $client = $this->safeJsonDecode($document->client_data ?? $document->client_json ?? '[]');
+        }
+        
+        $ruc = $company->ruc ?? '';
+        $tipoDoc = $document->tipo_documento ?? '01';
+        $serie = $document->serie ?? '';
+        $numero = $document->correlativo ?? '';
+        $mtoIgv = number_format($document->mto_igv ?? 0, 2, '.', '');
+        $mtoTotal = number_format($document->mto_imp_venta ?? 0, 2, '.', '');
+        $fechaEmision = $document->fecha_emision ? $document->fecha_emision->format('Y-m-d') : date('Y-m-d');
+        $tipoDocCliente = $client['tipo_documento'] ?? '1';
+        $numDocCliente = $client['numero_documento'] ?? '';
+        
+        return "{$ruc}|{$tipoDoc}|{$serie}|{$numero}|{$mtoIgv}|{$mtoTotal}|{$fechaEmision}|{$tipoDocCliente}|{$numDocCliente}|";
+    }
+
+    /**
+     * Genera código QR y retorna como base64
+     */
+    protected function generateQRCode(string $data): string
+    {
+        try {
+            // Usar SVG que es más compatible y funciona en todos los ambientes
+            $renderer = new ImageRenderer(
+                new RendererStyle(200, 10),
+                new SvgImageBackEnd()
+            );
+            
+            $writer = new Writer($renderer);
+            $svgString = $writer->writeString($data);
+            
+            return 'data:image/svg+xml;base64,' . base64_encode($svgString);
+        } catch (Exception $e) {
+            // Log del error para debug
+            \Log::error('Error generando QR Code: ' . $e->getMessage());
+            
+            // Placeholder que funciona siempre
+            $placeholder = '<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+                <rect width="200" height="200" fill="#f8f9fa" stroke="#dee2e6" stroke-width="2"/>
+                <text x="100" y="90" text-anchor="middle" fill="#6c757d" font-family="Arial" font-size="14" font-weight="bold">QR CODE</text>
+                <text x="100" y="110" text-anchor="middle" fill="#6c757d" font-family="Arial" font-size="12">SUNAT</text>
+                <text x="100" y="125" text-anchor="middle" fill="#6c757d" font-family="Arial" font-size="8">' . substr($data, 0, 20) . '...</text>
+                <rect x="50" y="140" width="100" height="40" fill="none" stroke="#adb5bd" stroke-width="1" stroke-dasharray="2,2"/>
+            </svg>';
+            
+            return 'data:image/svg+xml;base64,' . base64_encode($placeholder);
+        }
+    }
+
+    /**
+     * Obtiene el tipo de documento del cliente con descripción
+     */
+    protected function getTipoDocumentoClienteNombre($codigo): string
+    {
+        return match($codigo) {
+            '0' => 'DOC. TRIB. NO DOM. SIN RUC',
+            '1' => 'DNI',
+            '4' => 'CARNET DE EXTRANJERÍA',
+            '6' => 'RUC',
+            '7' => 'PASAPORTE',
+            '11' => 'PARTIDA DE NACIMIENTO',
+            '12' => 'CEDULA DIPLOMATICA',
+            default => 'OTROS'
+        };
+    }
+
+    /**
+     * Decodifica JSON de manera segura, manejando tanto strings como arrays
+     */
+    protected function safeJsonDecode($data): array
+    {
+        // Si ya es un array, devolverlo directamente
+        if (is_array($data)) {
+            return $data;
+        }
+        
+        // Si es null o vacío, devolver array vacío
+        if (empty($data)) {
+            return [];
+        }
+        
+        // Si es string, intentar decodificar
+        if (is_string($data)) {
+            $decoded = json_decode($data, true);
+            
+            // Si la decodificación falló o no es array, devolver array vacío
+            if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
+                return [];
+            }
+            
+            return $decoded;
+        }
+        
+        // Para cualquier otro tipo, devolver array vacío
+        return [];
     }
 }

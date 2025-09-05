@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Boleta de Venta Electrónica</title>
+  <title>{{ $tipo_documento_nombre }}</title>
   <style>
     /* ================= BASE ================= */
     body {
@@ -287,43 +287,9 @@
       border: 1px solid #000;
       border-radius: 8px;
       background-color: #f9f9f9;
-    }
-
-    .footer-content {
-      display: flex;
-      justify-content: space-between;
-      gap: 20px;
-      margin-bottom: 15px;
-    }
-
-    .sunat-info,
-    .empresa-info {
-      flex: 1;
-    }
-
-    .footer-extra h4 {
-      margin: 0 0 10px 0;
-      font-size: 12px;
-      color: #333;
-      border-bottom: 1px solid #ccc;
-      padding-bottom: 5px;
-    }
-
-    .footer-extra p {
-      margin: 5px 0;
       font-size: 10px;
-      line-height: 1.4;
-    }
-
-    .footer-bottom {
       text-align: center;
-      border-top: 1px solid #ccc;
-      padding-top: 10px;
-    }
-
-    .footer-bottom p {
-      margin: 3px 0;
-      font-size: 10px;
+      line-height: 1.4;
     }
 
     /* ================= PRINT ================= */
@@ -337,9 +303,8 @@
         padding: 0;
       }
     }
-  </style>
+    </style>
 </head>
-
 <body>
   <div class="container">
 
@@ -354,29 +319,34 @@
       </div>
       <div class="empresa">
         <h2>{{ $company->razon_social ?? 'EMPRESA' }}</h2>
+        @if($company->nombre_comercial && $company->nombre_comercial != $company->razon_social)
+          <p style="font-size: 12px; margin-bottom: 5px;">{{ $company->nombre_comercial }}</p>
+        @endif
         <p>
-          @if($company->direccion_fiscal)
-            {{ $company->direccion_fiscal }}<br>
+          @if($company->direccion)
+            {{ $company->direccion }}<br>
           @endif
-          @if($company->actividad_economica)
-            {{ $company->actividad_economica }}<br>
+          @if($company->distrito || $company->provincia || $company->departamento)
+            {{ $company->distrito ? $company->distrito . ', ' : '' }}
+            {{ $company->provincia ? $company->provincia . ', ' : '' }}
+            {{ $company->departamento }}<br>
           @endif
           @if($company->telefono)
-            TELÉFONO: {{ $company->telefono }}<br>
+            TEL: {{ $company->telefono }}<br>
           @endif
           @if($company->email)
-            EMAIL: {{ $company->email }}<br>
+            {{ $company->email }}<br>
           @endif
-          @if($company->website)
-            WEB: {{ $company->website }}
+          @if($company->web)
+            {{ $company->web }}
           @endif
         </p>
       </div>
       <div class="factura">
         <div class="factura-box">
-          <p><b>RUC {{ $company->numero_documento ?? 'N/A' }}</b></p>
-          <p><b>{{ $tipo_documento_nombre ?? 'BOLETA DE VENTA ELECTRÓNICA' }}</b></p>
-          <p><b>{{ $document->serie }}-{{ str_pad($document->correlativo, 8, '0', STR_PAD_LEFT) }}</b></p>
+          <p><b>RUC {{ $company->ruc ?? 'N/A' }}</b></p>
+          <p><b>{{ $tipo_documento_nombre ?? 'BOLETA ELECTRÓNICA' }}</b></p>
+          <p><b>{{ $document->serie }}-{{ str_pad($document->correlativo, 6, '0', STR_PAD_LEFT) }}</b></p>
         </div>
       </div>
     </div>
@@ -385,20 +355,18 @@
     <div class="datos">
       <div>
         <p>
-          <b>{{ ($client['tipo_documento'] ?? '1') == '6' ? 'RUC' : 'DNI' }}:</b> {{ $client['numero_documento'] ?? '' }}<br>
+          <b>{{ $client['tipo_documento'] == '6' ? 'RUC' : 'DNI' }}:</b> {{ $client['numero_documento'] ?? 'N/A' }}<br>
           <b>CLIENTE:</b> {{ $client['razon_social'] ?? 'CLIENTE' }}<br>
-          @if(!empty($client['direccion'] ?? ''))
-          <b>DIRECCIÓN:</b> {{ $client['direccion'] }}
+          @if(isset($client['direccion']) && $client['direccion'])
+            <b>DIRECCIÓN:</b> {{ $client['direccion'] }}
           @endif
         </p>
       </div>
       <div>
         <p>
-          <b>FECHA EMISIÓN:</b> {{ $fecha_emision ?? '' }}<br>
+          <b>FECHA EMISIÓN:</b> {{ $fecha_emision }}<br>
+          <b>FECHA VENCIMIENTO:</b> {{ $fecha_vencimiento ?? '-' }}<br>
           <b>MONEDA:</b> {{ $totales['moneda_nombre'] ?? 'SOLES' }}
-          @if($document->orden_compra ?? null)
-          <br><b>ORDEN DE COMPRA:</b> {{ $document->orden_compra ?? '' }}
-          @endif
         </p>
       </div>
     </div>
@@ -410,38 +378,35 @@
           <th>Nº</th>
           <th>CÓDIGO</th>
           <th>DESCRIPCIÓN</th>
-          <th>UNIDAD</th>
+          <th>UND</th>
           <th>CANT.</th>
-          <th>P. UNIT.</th>
+          <th>P.UNIT</th>
           <th>TOTAL</th>
         </tr>
       </thead>
       <tbody>
-        @if(is_array($detalles ?? []) && count($detalles) > 0)
-                    @foreach($detalles as $index => $detalle)
-        <tr>
-          <td>{{ str_pad($index + 1, 3, '0', STR_PAD_LEFT) }}</td>
-          <td>{{ $detalle['codigo'] ?? '' }}</td>
-          <td>{{ $detalle['descripcion'] ?? 'PRODUCTO O SERVICIO' }}</td>
-          <td>{{ $detalle['unidad'] ?? 'NIU' }}</td>
-          <td>{{ number_format($detalle['cantidad'] ?? 0, 2) }}</td>
-          <td>{{ number_format($detalle['mto_valor_unitario'] ?? 0, 2) }}</td>
-          <td>{{ number_format($detalle['mto_valor_venta'] ?? 0, 2) }}</td>
-        </tr>
-            @endforeach
-        @endif
-        
-        <!-- Fila espaciadora dinámica -->
-        <tr class="fila-espaciadora">
-          <td colspan="7">&nbsp;</td>
-        </tr>
+        @forelse($detalles as $index => $detalle)
+          <tr>
+            <td>{{ $index + 1 }}</td>
+            <td>{{ $detalle['codigo'] ?? '' }}</td>
+            <td>{{ $detalle['descripcion'] ?? '' }}</td>
+            <td>{{ $detalle['unidad'] ?? 'NIU' }}</td>
+            <td>{{ number_format($detalle['cantidad'] ?? 0, 2) }}</td>
+            <td>{{ number_format($detalle['mto_valor_unitario'] ?? 0, 2) }}</td>
+            <td>{{ number_format($detalle['mto_valor_venta'] ?? 0, 2) }}</td>
+          </tr>
+        @empty
+          <tr>
+            <td colspan="7" style="text-align: center; padding: 15px;">No hay items en esta boleta</td>
+          </tr>
+        @endforelse
       </tbody>
     </table>
 
     <!-- SON EN LETRAS -->
     <table class="en-letras">
       <tr>
-        <td>SON: {{ (new \App\Services\PdfService())->numeroALetras($totales['total'] ?? 0) }} {{ $totales['moneda_nombre'] ?? 'SOLES' }}</td>
+        <td>SON: {{ strtoupper($total_en_letras) }} {{ strtoupper($totales['moneda_nombre'] ?? 'SOLES') }}</td>
       </tr>
     </table>
 
@@ -451,70 +416,67 @@
         <td rowspan="7" style="width: 60%;">
           <div class="qr-info-container">
             <div class="qr">
-              @if(isset($document->codigo_hash))
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data={{ urlencode($document->codigo_hash) }}" alt="Código QR">
-              @else
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data={{ urlencode($document->numero_completo ?? 'Boleta') }}" alt="Código QR">
-              @endif
+              <img src="{{ $qr_code }}" alt="Código QR">
             </div>
             <div class="info-footer">
-              <b>INFORMACIÓN COMPLEMENTARIA:</b><br>
-              • Esta boleta ha sido generada en el Sistema de Emisión Electrónica.<br>
-              • Para verificar autenticidad, ingrese a www.sunat.gob.pe<br><br>
-
-              @if($document->forma_pago ?? null)
-              • <b>Forma de Pago:</b> {{ $document->forma_pago }}<br>
+              <b>FECHA EMISIÓN:</b> {{ $fecha_emision }}<br>
+              <b>CONDICIÓN PAGO:</b> {{ $document->forma_pago_tipo ?? 'CONTADO' }}<br>
+              @if(!empty($document->observaciones))
+                <b>OBSERVACIONES:</b> {{ $document->observaciones }}<br>
               @endif
-              @if($document->condicion_pago ?? null)
-              • <b>Condición de Pago:</b> {{ $document->condicion_pago }}<br>
+              @if(!empty($document->leyendas))
+                <b>LEYENDAS:</b><br>
+                @php
+                    $leyendas = is_array($document->leyendas) ? $document->leyendas : json_decode($document->leyendas, true);
+                    $leyendas = $leyendas ?? [];
+                @endphp
+                @foreach($leyendas as $leyenda)
+                  • {{ $leyenda['value'] ?? '' }}<br>
+                @endforeach
               @endif
-
-             @if($document->codigo_hash ?? null)
-            <div style="margin-top: 8px; padding: 4px; background: #f0f0f0; font-size: 8px; word-break: break-all;">
-                <strong>CÓDIGO HASH:</strong> {{ $document->codigo_hash }}
-            </div>
-            @endif
+              @if($hash)
+                <b>HASH:</b> {{ substr($hash, 0, 15) }}...<br>
+              @endif
             </div>
           </div>
         </td>
-        <td class="label">Total Ope. Gravadas</td>
-        <td>{{ ($totales['moneda'] ?? 'PEN') == 'PEN' ? 'S/' : '$' }} {{ number_format($document->mto_oper_gravadas ?? 0, 2) }}</td>
+        <td class="label">Ope. Gravadas</td>
+        <td>{{ $totales['moneda'] }} {{ $totales['subtotal_formatted'] }}</td>
       </tr>
       <tr>
-        <td class="label">Total Ope. Inafectadas</td>
-        <td>{{ ($totales['moneda'] ?? 'PEN') == 'PEN' ? 'S/' : '$' }} {{ number_format($document->mto_oper_inafectas ?? 0, 2) }}</td>
+        <td class="label">Ope. Inafectadas</td>
+        <td>{{ $totales['moneda'] }} {{ number_format($document->mto_oper_inafectas ?? 0, 2) }}</td>
       </tr>
       <tr>
-        <td class="label">Total Ope. Exoneradas</td>
-        <td>{{ ($totales['moneda'] ?? 'PEN') == 'PEN' ? 'S/' : '$' }} {{ number_format($document->mto_oper_exoneradas ?? 0, 2) }}</td>
+        <td class="label">Ope. Exoneradas</td>
+        <td>{{ $totales['moneda'] }} {{ number_format($document->mto_oper_exoneradas ?? 0, 2) }}</td>
       </tr>
       <tr>
-        <td class="label">Total Descuentos</td>
-        <td>{{ ($totales['moneda'] ?? 'PEN') == 'PEN' ? 'S/' : '$' }} 0.00</td>
+        <td class="label">Descuentos</td>
+        <td>{{ $totales['moneda'] }} 0.00</td>
       </tr>
       <tr>
-        <td class="label">Total IGV</td>
-        <td>{{ ($totales['moneda'] ?? 'PEN') == 'PEN' ? 'S/' : '$' }} {{ number_format($document->mto_igv ?? 0, 2) }}</td>
+        <td class="label">IGV</td>
+        <td>{{ $totales['moneda'] }} {{ $totales['igv_formatted'] }}</td>
       </tr>
       <tr>
-        <td class="label">Total ISC</td>
-        <td>{{ ($totales['moneda'] ?? 'PEN') == 'PEN' ? 'S/' : '$' }} {{ number_format($document->mto_isc ?? 0, 2) }}</td>
+        <td class="label">ISC</td>
+        <td>{{ $totales['moneda'] }} {{ number_format($document->mto_isc ?? 0, 2) }}</td>
       </tr>
       <tr>
         <td class="label resaltado">TOTAL A PAGAR</td>
-        <td class="resaltado">{{ ($totales['moneda'] ?? 'PEN') == 'PEN' ? 'S/' : '$' }} {{ number_format($document->mto_imp_venta ?? 0, 2) }}</td>
+        <td class="resaltado">{{ $totales['moneda'] }} {{ $totales['total_formatted'] }}</td>
       </tr>
     </table>
+
     
     <!-- CONTENIDO EXTRA AL FINAL -->
     <div class="footer-extra">
-      Autorizado mediante Resolución de Intendencia SUNAT<br>
-      Representación impresa de la {{ $tipo_documento_nombre ?? 'BOLETA DE VENTA ELECTRÓNICA' }}<br>
-      @if($company->website)
-        Para consultar el comprobante visite {{ $company->website }}<br>
-      @endif
-      @if(isset($document->codigo_hash))
-        Código Hash: {{ $document->codigo_hash }}
+      Autorizado mediante Resolución de Intendencia N° 034-005-0000971/SUNAT, de fecha 15/03/2016.<br>
+      Representación impresa del {{ $tipo_documento_nombre ?? 'COMPROBANTE DE PAGO ELECTRÓNICO' }}<br>
+      Para consultar el comprobante ingrese a www.sunat.gob.pe
+      @if($hash)
+        <br><b>Código Hash:</b> {{ $hash }}
       @endif
     </div>
 

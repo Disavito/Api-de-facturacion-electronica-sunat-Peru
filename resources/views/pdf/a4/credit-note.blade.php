@@ -1,515 +1,515 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-  <meta charset="UTF-8">
-  <title>Nota de Crédito Electrónica</title>
-  <style>
-    /* ================= BASE ================= */
-    body {
-      font-family: Arial, sans-serif;
-      font-size: 12px;
-      margin: 0;
-      padding: 0;
-    }
+    <meta charset="UTF-8">
+    <title>{{ $tipo_documento_nombre }}</title>
+    <style>
+        /* ================= BASE ================= */
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
 
-    .container {
-      width: 18cm;
-      margin: auto;
-      padding: 15px;
-      box-sizing: border-box;
-      border: 1px solid #000;
-      border-radius: 10px;
-    }
+        .container {
+            width: 100%;
+            padding: 15px;
+            box-sizing: border-box;
+        }
 
-    /* ================= HEADER ================= */
-    .header {
-      display: table;
-      width: 97%;
-      border-bottom: 1px solid #000;
-      padding-bottom: 15px;
-      table-layout: fixed;
-    }
+        /* ================= HEADER ================= */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 15px;
+        }
 
-    .header > div {
-      display: table-cell;
-      vertical-align: top;
-      padding: 5px;
-    }
+        .company-info {
+            flex: 1;
+            padding-right: 20px;
+        }
 
-    .logo {
-      width: 25%;
-      text-align: left;
-    }
+        .company-info h1 {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 0 0 5px 0;
+            color: #1a365d;
+        }
 
-    .logo img {
-      width: 60px;
-      height: 60px;
-      object-fit: contain;
-      vertical-align: top;
-      margin-right: 10px;
-    }
+        .company-info .subtitle {
+            font-size: 14px;
+            margin: 0 0 10px 0;
+            color: #666;
+        }
 
-    .empresa {
-      width: 50%;
-      text-align: left;
-      padding: 0 15px;
-    }
+        .company-details {
+            font-size: 10px;
+            line-height: 1.4;
+        }
 
-    .empresa h2 {
-      margin: 0 0 5px 0;
-      font-size: 16px;
-      font-weight: bold;
-      color: #000;
-    }
+        .document-box {
+            background: #f8f9fa;
+            border: 2px solid #1a365d;
+            padding: 15px;
+            text-align: center;
+            min-width: 200px;
+            border-radius: 5px;
+        }
 
-    .empresa p {
-      line-height: 1.4;
-      margin: 0;
-      font-size: 11px;
-      color: #333;
-    }
+        .document-type {
+            font-size: 16px;
+            font-weight: bold;
+            color: #1a365d;
+            margin-bottom: 8px;
+        }
 
-    .factura {
-      width: 25%;
-      text-align: center;
-      vertical-align: top;
-    }
+        .document-number {
+            font-size: 18px;
+            font-weight: bold;
+            color: #000;
+            margin: 5px 0;
+        }
 
-    .factura-box {
-      border: 1px solid #000;
-      border-radius: 8px;
-      padding: 10px;
-      font-size: 11px;
-      background-color: #fff;
-      display: inline-block;
-      min-width: 180px;
-    }
+        .document-ruc {
+            font-size: 12px;
+            color: #666;
+            margin-top: 8px;
+        }
 
-    .factura-box p {
-      margin: 2px 0;
-      font-weight: bold;
-    }
+        /* ================= CLIENT INFO ================= */
+        .client-section {
+            margin: 20px 0;
+            background: #f8f9fa;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
 
-    /* ================= DATOS ================= */
-    .datos {
-      margin-top: 15px;
-      margin-bottom: 15px;
-      display: table;
-      width: 100%;
-      font-size: 12px;
-      table-layout: fixed;
-    }
+        .client-title {
+            font-weight: bold;
+            font-size: 12px;
+            color: #1a365d;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+        }
 
-    .datos > div {
-      display: table-cell;
-      width: 50%;
-      vertical-align: top;
-      padding: 5px;
-    }
+        .client-data {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
 
-    .datos p {
-      line-height: 1.6;
-      margin: 0;
-      padding: 5px 0;
-    }
+        .client-field {
+            display: flex;
+            margin-bottom: 5px;
+        }
 
-    /* ================= DOCUMENTO AFECTADO ================= */
-    .doc-afectado {
-      margin-top: 15px;
-      margin-bottom: 15px;
-      padding: 10px;
-      border: 2px solid #d32f2f;
-      border-radius: 8px;
-      background-color: #fff3e0;
-    }
+        .client-label {
+            font-weight: bold;
+            min-width: 80px;
+            color: #555;
+        }
 
-    .doc-afectado h3 {
-      margin: 0 0 10px 0;
-      color: #d32f2f;
-      font-size: 13px;
-      text-align: center;
-    }
+        .client-value {
+            flex: 1;
+        }
 
-    .doc-afectado .info {
-      display: table;
-      width: 100%;
-    }
+        /* ================= DOCUMENT DETAILS ================= */
+        .document-details {
+            margin: 15px 0;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
 
-    .doc-afectado .info > div {
-      display: table-cell;
-      width: 33.33%;
-      text-align: center;
-      padding: 5px;
-    }
+        .detail-field {
+            display: flex;
+            align-items: center;
+        }
 
-    /* ================= TABLA PRINCIPAL ================= */
-    table {
-      border-collapse: separate;
-      border-spacing: 0;
-      width: 100%;
-      font-size: 11px;
-      border: 1px solid #000;
-      border-radius: 8px;
-    }
+        .detail-label {
+            font-weight: bold;
+            min-width: 100px;
+            color: #555;
+        }
 
-    /* Tabla de items sin altura fija */
-    table:not(.en-letras):not(.totales) {
-      width: 100%;
-    }
+        /* ================= TABLE ================= */
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 10px;
+        }
 
-    /* Fila espaciadora completamente dinámica */
-    .fila-espaciadora td {
-      height: 350px;
-      vertical-align: top;
-      border-bottom: none;
-      padding: 0;
-    }
+        .items-table th {
+            background: #1a365d;
+            color: white;
+            padding: 8px 5px;
+            text-align: center;
+            font-weight: bold;
+            border: 1px solid #000;
+        }
 
-    thead {
-      background-color: #f0f0f0;
-    }
+        .items-table td {
+            padding: 6px 5px;
+            border: 1px solid #ccc;
+            text-align: center;
+            vertical-align: top;
+        }
 
-    th,
-    td {
-      border-right: 1px solid #000;
-      border-bottom: 1px solid #000;
-      padding: 5px;
-      text-align: left;
-    }
+        .items-table .text-left {
+            text-align: left;
+        }
 
-    /* Primera columna sin borde izquierdo */
-    th:first-child,
-    td:first-child {
-      border-left: none;
-    }
+        .items-table .text-right {
+            text-align: right;
+        }
 
-    /* Última columna sin borde derecho */
-    th:last-child,
-    td:last-child {
-      border-right: none;
-    }
+        .items-table tbody tr:nth-child(even) {
+            background: #f8f9fa;
+        }
 
-    /* Última fila sin borde inferior */
-    tbody tr:last-child td {
-      border-bottom: none;
-    }
+        /* ================= TOTALS ================= */
+        .totals-section {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
 
-    /* Header sin borde superior (ya lo tiene la tabla) */
-    thead th:first-child {
-      border-top: none;
-    }
-    
-    thead th:last-child {
-      border-top: none;
-    }
-    
-    thead th {
-      border-top: none;
-    }
+        .totals-left {
+            flex: 1;
+            padding-right: 20px;
+        }
 
-    /* Esquinas redondeadas para el header */
-    thead th:first-child {
-      border-top-left-radius: 6px;
-    }
+        .totals-right {
+            min-width: 300px;
+        }
 
-    thead th:last-child {
-      border-top-right-radius: 6px;
-    }
+        .totals-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
 
-    /* Esquinas redondeadas para la última fila */
-    tbody tr:last-child td:first-child {
-      border-bottom-left-radius: 6px;
-    }
+        .totals-table td {
+            padding: 5px 10px;
+            border: 1px solid #ccc;
+        }
 
-    tbody tr:last-child td:last-child {
-      border-bottom-right-radius: 6px;
-    }
+        .totals-table .label {
+            background: #f0f0f0;
+            font-weight: bold;
+            text-align: right;
+        }
 
-    /* Columnas numéricas alineadas a la derecha */
-    th:nth-child(5),
-    th:nth-child(6),
-    td:nth-child(5),
-    td:nth-child(6) {
-      text-align: right;
-    }
+        .totals-table .value {
+            text-align: right;
+            font-weight: bold;
+        }
 
-    /* ================= SON EN LETRAS ================= */
-    .en-letras {
-      margin-top: 5px;
-    }
+        .total-final {
+            background: #1a365d !important;
+            color: white !important;
+            font-size: 12px;
+            font-weight: bold;
+        }
 
-    .en-letras td {
-      text-align: center;
-      font-weight: bold;
-      padding: 6px;
-      font-size: 11px;
-    }
+        /* ================= FOOTER ================= */
+        .footer-section {
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
 
-    /* ================= TOTALES ================= */
-    .totales {
-      margin-top: 10px;
-    }
+        .qr-section {
+            text-align: center;
+            min-width: 150px;
+        }
 
-    .totales td {
-      padding: 2px 10px;
-      font-size: 11px;
-      vertical-align: top;
-      line-height: 1.2;
-    }
+        .qr-code img {
+            width: 120px;
+            height: 120px;
+        }
 
-    .totales .label {
-      text-align: right;
-      font-weight: bold;
-      width: 150px;
-    }
+        .qr-info {
+            font-size: 9px;
+            color: #666;
+            margin-top: 5px;
+        }
 
-    .totales .resaltado {
-      background: #f0f0f0;
-      font-weight: bold;
-    }
+        .additional-info {
+            flex: 1;
+            padding-left: 20px;
+            font-size: 9px;
+            color: #666;
+        }
 
-    /* Reducir espacio entre filas de totales */
-    .totales tr {
-      height: auto;
-    }
+        .hash-info {
+            margin-top: 10px;
+            padding: 8px;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            font-size: 8px;
+            word-break: break-all;
+        }
 
-    .totales tr td {
-      border-bottom: none;
-    }
+        /* ================= RESPONSIVE ================= */
+        @media print {
+            body { margin: 0; }
+            .container { padding: 0; }
+        }
 
-    /* Info + QR en misma celda */
-    .qr-info-container {
-      display: table;
-      width: 100%;
-      table-layout: fixed;
-    }
+        /* ================= UTILITIES ================= */
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .text-bold { font-weight: bold; }
+        .text-upper { text-transform: uppercase; }
+        .mb-10 { margin-bottom: 10px; }
+        .mt-10 { margin-top: 10px; }
 
-    .qr {
-      display: table-cell;
-      width: 130px;
-      vertical-align: top;
-      text-align: center;
-      padding-right: 10px;
-    }
+        /* ================= SPECIAL FIELDS ================= */
+        .observaciones {
+            margin: 15px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            background: #f9f9f9;
+            font-size: 10px;
+        }
 
-    .qr img {
-      width: 100px;
-      height: 100px;
-      display: block;
-      margin: 0 auto;
-    }
-
-    .info-footer {
-      display: table-cell;
-      font-size: 10px;
-      text-align: left;
-      vertical-align: top;
-      padding-left: 10px;
-      line-height: 1.4;
-    }
-
-    /* ================= FOOTER EXTRA ================= */
-    .footer-extra {
-      margin-top: 20px;
-      padding: 15px;
-      border: 1px solid #000;
-      border-radius: 8px;
-      background-color: #f9f9f9;
-    }
-
-    /* ================= PRINT ================= */
-    @media print {
-      body {
-        margin: 0;
-      }
-
-      .container {
-        border: none;
-        padding: 0;
-      }
-    }
-  </style>
+        .leyendas {
+            margin: 10px 0;
+            font-size: 9px;
+            color: #555;
+        }
+    </style>
 </head>
-
 <body>
-  <div class="container">
-
-    <!-- HEADER -->
-    <div class="header">
-      <div class="logo">
-        @if($company->logo_path)
-        <img src="{{ $company->logo_path }}" alt="Logo {{ $company->razon_social }}">
-        @else
-        <img src="./logo.jpg" alt="Logo Empresa">
-        @endif
-      </div>
-      <div class="empresa">
-        <h2>{{ $company->razon_social ?? 'RAZÓN SOCIAL DE LA EMPRESA' }}</h2>
-        <p>
-          <strong>Dirección:</strong> {{ $company->direccion ?? 'Dirección de la empresa' }}<br>
-          @if($company->telefono ?? null)
-          <strong>Teléfono:</strong> {{ $company->telefono ?? 'N/A' }}<br>
-          @endif
-          @if($company->email ?? null)
-          <strong>Email:</strong> {{ $company->email ?? 'N/A' }}<br>
-          @endif
-          @if($company->web ?? null)
-          <strong>Web:</strong> {{ $company->web ?? 'N/A' }}
-          @endif
-        </p>
-      </div>
-      <div class="factura">
-        <div class="factura-box">
-          <p><b>RUC {{ $company->ruc ?? '20000000001' }}</b></p>
-          <p><b>NOTA DE CRÉDITO ELECTRÓNICA</b></p>
-          <p><b>{{ $document->numero_completo ?? 'FC01-00000001' }}</b></p>
-        </div>
-      </div>
-    </div>
-
-    <!-- DOCUMENTO AFECTADO -->
-    <div class="doc-afectado">
-      <h3>DOCUMENTO AFECTADO POR LA NOTA DE CRÉDITO</h3>
-      <div class="info">
-        <div>
-          <strong>TIPO:</strong> {{ $documento_afectado['tipo'] ?? 'FACTURA' }}
-        </div>
-        <div>
-          <strong>NÚMERO:</strong> {{ $documento_afectado['numero'] ?? 'N/A' }}
-        </div>
-        <div>
-          <strong>MOTIVO:</strong> {{ $motivo['descripcion'] ?? 'ANULACIÓN DE LA OPERACIÓN' }}
-        </div>
-      </div>
-    </div>
-
-    <!-- DATOS -->
-    <div class="datos">
-      <div>
-        <p>
-          <b>{{ ($client['tipo_documento'] ?? '1') == '6' ? 'RUC' : 'DNI' }}:</b> {{ $client['numero_documento'] ?? '' }}<br>
-          <b>CLIENTE:</b> {{ $client['razon_social'] ?? 'CLIENTE' }}<br>
-          @if(!empty($client['direccion'] ?? ''))
-          <b>DIRECCIÓN:</b> {{ $client['direccion'] }}
-          @endif
-        </p>
-      </div>
-      <div>
-        <p>
-          <b>FECHA EMISIÓN:</b> {{ $fecha_emision ?? '' }}<br>
-          <b>MONEDA:</b> {{ $totales['moneda_nombre'] ?? 'SOLES' }}
-        </p>
-      </div>
-    </div>
-
-    <!-- TABLA DE ITEMS -->
-    <table>
-      <thead>
-        <tr>
-          <th>Nº</th>
-          <th>CÓDIGO</th>
-          <th>DESCRIPCIÓN</th>
-          <th>UNIDAD</th>
-          <th>CANT.</th>
-          <th>P. UNIT.</th>
-          <th>TOTAL</th>
-        </tr>
-      </thead>
-      <tbody>
-        @if(is_array($detalles ?? []) && count($detalles) > 0)
-                    @foreach($detalles as $index => $detalle)
-        <tr>
-          <td>{{ str_pad($index + 1, 3, '0', STR_PAD_LEFT) }}</td>
-          <td>{{ $detalle['codigo_interno'] ?? $detalle['codigo'] ?? '' }}</td>
-          <td>{{ $detalle['descripcion'] ?? 'PRODUCTO O SERVICIO' }}</td>
-          <td>{{ $detalle['unidad'] ?? 'NIU' }}</td>
-          <td>{{ number_format($detalle['cantidad'] ?? 0, 2) }}</td>
-          <td>{{ number_format($detalle['mto_valor_unitario'] ?? 0, 2) }}</td>
-          <td>{{ number_format($detalle['mto_valor_venta'] ?? 0, 2) }}</td>
-        </tr>
-            @endforeach
-        @endif
-        
-        <!-- Fila espaciadora dinámica -->
-        <tr class="fila-espaciadora">
-          <td colspan="7">&nbsp;</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <!-- SON EN LETRAS -->
-    <table class="en-letras">
-      <tr>
-        <td>SON: {{ strtoupper(app('App\Services\PdfService')->numeroALetras($totales['total'] ?? 0)) }} {{ strtoupper($totales['moneda_nombre'] ?? 'SOLES') }}</td>
-      </tr>
-    </table>
-
-    <!-- TOTALES -->
-    <table class="totales">
-      <tr>
-        <td rowspan="7" style="width: 60%;">
-          <div class="qr-info-container">
-            <div class="qr">
-              @if(isset($document->codigo_hash))
-              <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data={{ urlencode($document->codigo_hash) }}" alt="Código QR">
-              @else
-              <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data={{ urlencode($document->numero_completo ?? 'Document') }}" alt="Código QR">
-              @endif
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <div class="company-info">
+                <h1>{{ $company->razon_social }}</h1>
+                @if($company->nombre_comercial && $company->nombre_comercial != $company->razon_social)
+                    <div class="subtitle">{{ $company->nombre_comercial }}</div>
+                @endif
+                
+                <div class="company-details">
+                    <div><strong>Dirección:</strong> {{ $company->direccion }}</div>
+                    @if($company->distrito || $company->provincia || $company->departamento)
+                        <div>
+                            {{ $company->distrito ? $company->distrito . ', ' : '' }}
+                            {{ $company->provincia ? $company->provincia . ', ' : '' }}
+                            {{ $company->departamento }}
+                        </div>
+                    @endif
+                    
+                    @if($company->telefono)
+                        <div><strong>Teléfono:</strong> {{ $company->telefono }}</div>
+                    @endif
+                    
+                    @if($company->email)
+                        <div><strong>Email:</strong> {{ $company->email }}</div>
+                    @endif
+                    
+                    @if($company->web)
+                        <div><strong>Web:</strong> {{ $company->web }}</div>
+                    @endif
+                </div>
             </div>
-            <div class="info-footer">
-              <b>OBSERVACIONES:</b><br>
-              • Esta nota de crédito se encuentra almacenada electrónicamente en SUNAT.<br>
-              • Para verificar su autenticidad ingrese a www.sunat.gob.pe<br>
-              @if($document->observaciones ?? null)
-              • {{ $document->observaciones }}<br>
-              @endif
-              <br>
+            
+            <div class="document-box">
+                <div class="document-type">{{ $tipo_documento_nombre }}</div>
+                <div class="document-number">{{ $document->serie }}-{{ str_pad($document->correlativo, 6, '0', STR_PAD_LEFT) }}</div>
+                <div class="document-ruc">RUC: {{ $company->ruc }}</div>
+            </div>
+        </div>
 
-             @if($document->codigo_hash ?? null)
-            <div style="margin-top: 8px; padding: 4px; background: #f0f0f0; font-size: 8px; word-break: break-all;">
-                <strong>CÓDIGO HASH:</strong> {{ $document->codigo_hash }}
+        <!-- CLIENT INFORMATION -->
+        <div class="client-section">
+            <div class="client-title">DATOS DEL CLIENTE</div>
+            <div class="client-data">
+                <div class="client-field">
+                    <span class="client-label">Señor(es):</span>
+                    <span class="client-value">{{ $client['razon_social'] }}</span>
+                </div>
+                <div class="client-field">
+                    <span class="client-label">{{ $client['tipo_documento'] == '6' ? 'RUC' : 'DNI' }}:</span>
+                    <span class="client-value">{{ $client['numero_documento'] }}</span>
+                </div>
+                @if(!empty($client['direccion']))
+                <div class="client-field">
+                    <span class="client-label">Dirección:</span>
+                    <span class="client-value">{{ $client['direccion'] }}</span>
+                </div>
+                @endif
+                @if(!empty($client['telefono']))
+                <div class="client-field">
+                    <span class="client-label">Teléfono:</span>
+                    <span class="client-value">{{ $client['telefono'] }}</span>
+                </div>
+                @endif
+                @if(!empty($client['email']))
+                <div class="client-field">
+                    <span class="client-label">Email:</span>
+                    <span class="client-value">{{ $client['email'] }}</span>
+                </div>
+                @endif
+            </div>
+        </div>
+
+        <!-- DOCUMENT DETAILS -->
+        <div class="document-details">
+            <div class="detail-field">
+                <span class="detail-label">Fecha Emisión:</span>
+                <span>{{ $fecha_emision }}</span>
+            </div>
+            @if($fecha_vencimiento)
+            <div class="detail-field">
+                <span class="detail-label">Fecha Vencimiento:</span>
+                <span>{{ $fecha_vencimiento }}</span>
             </div>
             @endif
+            <div class="detail-field">
+                <span class="detail-label">Moneda:</span>
+                <span>{{ $totales['moneda_nombre'] }}</span>
             </div>
-          </div>
-        </td>
-        <td class="label">Total Ope. Gravadas</td>
-        <td>{{ $totales['subtotal_formatted'] ?? '0.00' }}</td>
-      </tr>
-      <tr>
-        <td class="label">Total Ope. Inafectadas</td>
-        <td>S/ 0.00</td>
-      </tr>
-      <tr>
-        <td class="label">Total Ope. Exoneradas</td>
-        <td>S/ 0.00</td>
-      </tr>
-      <tr>
-        <td class="label">Total Descuentos</td>
-        <td>S/ 0.00</td>
-      </tr>
-      <tr>
-        <td class="label">Total IGV</td>
-        <td>{{ $totales['igv_formatted'] ?? '0.00' }}</td>
-      </tr>
-      <tr>
-        <td class="label">Total ISC</td>
-        <td>S/ 0.00</td>
-      </tr>
-      <tr>
-        <td class="label resaltado">TOTAL A PAGAR</td>
-        <td class="resaltado">{{ $totales['total_formatted'] ?? '0.00' }}</td>
-      </tr>
-    </table>
-    
-    <!-- CONTENIDO EXTRA AL FINAL -->
-    <div class="footer-extra">
-         Autorizado mediante resolución N° 034-005-0010431/SUNAT
-              Representación impresa de la NOTA DE CRÉDITO ELECTRÓNICA
-              Para consultar el comprobante visite www.sunat.gob.pe
-    </div>
+        </div>
 
-  </div>
+        <!-- ITEMS TABLE -->
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th style="width: 8%">CANT.</th>
+                    <th style="width: 10%">UNIDAD</th>
+                    <th style="width: 15%">CÓDIGO</th>
+                    <th style="width: 37%">DESCRIPCIÓN</th>
+                    <th style="width: 10%">V.UNIT</th>
+                    <th style="width: 10%">V.VENTA</th>
+                    <th style="width: 10%">TOTAL</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($detalles as $detalle)
+                <tr>
+                    <td class="text-center">{{ $detalle['cantidad'] ?? 0 }}</td>
+                    <td class="text-center">{{ $detalle['unidad'] ?? 'NIU' }}</td>
+                    <td class="text-left">{{ $detalle['codigo'] ?? '' }}</td>
+                    <td class="text-left">{{ $detalle['descripcion'] ?? '' }}</td>
+                    <td class="text-right">{{ number_format($detalle['mto_valor_unitario'] ?? 0, 2) }}</td>
+                    <td class="text-right">{{ number_format($detalle['mto_valor_venta'] ?? 0, 2) }}</td>
+                    <td class="text-right">{{ number_format(($detalle['mto_valor_venta'] ?? 0) + ($detalle['igv'] ?? 0), 2) }}</td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="7" class="text-center">No hay items registrados</td>
+                </tr>
+                @endforelse
+            </tbody>
+        </table>
+
+        <!-- TOTALS SECTION -->
+        <div class="totals-section">
+            <div class="totals-left">
+                <div style="font-weight: bold; margin-bottom: 10px;">SON: {{ strtoupper($total_en_letras) }}</div>
+                
+                @if(!empty($document->observaciones))
+                <div class="observaciones">
+                    <strong>Observaciones:</strong><br>
+                    {{ $document->observaciones }}
+                </div>
+                @endif
+                
+                @if(!empty($document->leyendas))
+                <div class="leyendas">
+                    <strong>Leyendas:</strong><br>
+                    @php
+                        $leyendas = is_array($document->leyendas) ? $document->leyendas : json_decode($document->leyendas, true);
+                        $leyendas = $leyendas ?? [];
+                    @endphp
+                    @foreach($leyendas as $leyenda)
+                        • {{ $leyenda['value'] ?? '' }}<br>
+                    @endforeach
+                </div>
+                @endif
+            </div>
+            
+            <div class="totals-right">
+                <table class="totals-table">
+                    <tr>
+                        <td class="label">OP. GRAVADAS:</td>
+                        <td class="value">{{ $totales['moneda'] }} {{ $totales['subtotal_formatted'] }}</td>
+                    </tr>
+                    @if($document->mto_oper_exoneradas > 0)
+                    <tr>
+                        <td class="label">OP. EXONERADAS:</td>
+                        <td class="value">{{ $totales['moneda'] }} {{ number_format($document->mto_oper_exoneradas, 2) }}</td>
+                    </tr>
+                    @endif
+                    @if($document->mto_oper_inafectas > 0)
+                    <tr>
+                        <td class="label">OP. INAFECTAS:</td>
+                        <td class="value">{{ $totales['moneda'] }} {{ number_format($document->mto_oper_inafectas, 2) }}</td>
+                    </tr>
+                    @endif
+                    @if($document->mto_icbper > 0)
+                    <tr>
+                        <td class="label">ICBPER:</td>
+                        <td class="value">{{ $totales['moneda'] }} {{ number_format($document->mto_icbper, 2) }}</td>
+                    </tr>
+                    @endif
+                    @if($document->mto_isc > 0)
+                    <tr>
+                        <td class="label">ISC:</td>
+                        <td class="value">{{ $totales['moneda'] }} {{ number_format($document->mto_isc, 2) }}</td>
+                    </tr>
+                    @endif
+                    <tr>
+                        <td class="label">IGV (18%):</td>
+                        <td class="value">{{ $totales['moneda'] }} {{ $totales['igv_formatted'] }}</td>
+                    </tr>
+                    <tr class="total-final">
+                        <td class="label">IMPORTE TOTAL:</td>
+                        <td class="value">{{ $totales['moneda'] }} {{ $totales['total_formatted'] }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="footer-section">
+            <div class="qr-section">
+                <div class="qr-code">
+                    <img src="{{ $qr_code }}" alt="Código QR">
+                </div>
+                <div class="qr-info">
+                    Representación impresa del<br>
+                    Comprobante de Pago Electrónico<br>
+                    Consulte en www.sunat.gob.pe
+                </div>
+            </div>
+            
+            <div class="additional-info">
+                <div><strong>Autorizado mediante Resolución de Intendencia N°</strong></div>
+                <div>034-005-0000971/SUNAT, de fecha 15/03/2016.</div>
+                
+                @if($hash)
+                <div class="hash-info">
+                    <strong>Hash (Resumen Digital):</strong><br>
+                    {{ $hash }}
+                </div>
+                @endif
+                
+                <div style="margin-top: 15px; text-align: center;">
+                    <em>Este documento fue generado electrónicamente y tiene validez legal</em>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

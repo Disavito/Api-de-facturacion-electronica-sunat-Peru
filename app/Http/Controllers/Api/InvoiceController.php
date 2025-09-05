@@ -225,7 +225,7 @@ class InvoiceController extends Controller
 
     public function generatePdf($id, Request $request)
     {
-        $invoice = Invoice::findOrFail($id);
+        $invoice = Invoice::with(['company', 'branch', 'client'])->findOrFail($id);
         return $this->generateDocumentPdf($invoice, 'invoice', $request);
     }
 
