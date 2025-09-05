@@ -1,4 +1,4 @@
-@extends('pdf.layouts.a5')
+@extends('pdf.layouts.ticket')
 
 @section('content')
     {{-- Header --}}
@@ -7,33 +7,44 @@
         'document' => $document, 
         'tipo_documento_nombre' => $tipo_documento_nombre,
         'fecha_emision' => $fecha_emision,
-        'format' => 'a5'
+        'format' => 'ticket'
     ])
 
     {{-- Client Info --}}
     @include('pdf.components.client-info', [
         'client' => $client,
-        'format' => 'a5',
+        'format' => 'ticket',
         'fecha_emision' => $fecha_emision
     ])
 
     {{-- Items Table --}}
     @include('pdf.components.items-table', [
         'detalles' => $detalles,
-        'format' => 'a5'
+        'format' => 'ticket'
     ])
 
     {{-- Totals --}}
     @include('pdf.components.totals', [
         'document' => $document,
-        'format' => 'a5',
-        'leyendas' => $leyendas ?? []
+        'format' => 'ticket'
     ])
+
+    {{-- Additional Info for Tickets --}}
+    @if(isset($leyendas) && !empty($leyendas))
+        <div class="additional-info">
+            @foreach($leyendas as $leyenda)
+                <div class="section">
+                    <div class="section-title">{{ $leyenda['codigo'] ?? '' }}:</div>
+                    <div>{{ $leyenda['descripcion'] ?? '' }}</div>
+                </div>
+            @endforeach
+        </div>
+    @endif
 
     {{-- QR Code and Footer --}}
     @include('pdf.components.qr-footer', [
         'qr_data' => $qr_data ?? null,
         'hash_cdr' => $hash_cdr ?? null,
-        'format' => 'a5'
+        'format' => 'ticket'
     ])
 @endsection

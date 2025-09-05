@@ -11,15 +11,32 @@ use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use Exception;
+use App\Services\PdfTemplateService;
 
 class PdfService
 {
+    protected ?PdfTemplateService $templateService = null;
+
+    public function __construct(?PdfTemplateService $templateService = null)
+    {
+        $this->templateService = $templateService;
+    }
+
+    protected function getTemplateService(): PdfTemplateService
+    {
+        if (!$this->templateService) {
+            $this->templateService = new PdfTemplateService();
+        }
+        return $this->templateService;
+    }
+
     // Formatos disponibles
     const FORMATS = [
         'A4' => ['width' => 210, 'height' => 297, 'unit' => 'mm'],
         'A5' => ['width' => 148, 'height' => 210, 'unit' => 'mm'],
         '80mm' => ['width' => 80, 'height' => 200, 'unit' => 'mm'], // Ticket común
         '50mm' => ['width' => 50, 'height' => 150, 'unit' => 'mm'], // Ticket pequeño
+        'ticket' => ['width' => 50, 'height' => 150, 'unit' => 'mm'], // Nuevo formato optimizado
     ];
 
     public function generateInvoicePdf($invoice, string $format = 'A4'): string
@@ -550,28 +567,8 @@ class PdfService
      */
     protected function getTemplate(string $documentType, string $format): string
     {
-        // Nueva estructura organizada por formato
-        $formatTemplate = "pdf.{$format}.{$documentType}";
-        
-        // Verificar si existe el template específico para el formato
-        if (View::exists($formatTemplate)) {
-            return $formatTemplate;
-        }
-        
-        // Fallback: intentar con el template A4 como predeterminado
-        $a4Template = "pdf.a4.{$documentType}";
-        if (View::exists($a4Template)) {
-            return $a4Template;
-        }
-        
-        // Último fallback: template en la raíz (estructura antigua)
-        $rootTemplate = "pdf.{$documentType}";
-        if (View::exists($rootTemplate)) {
-            return $rootTemplate;
-        }
-        
-        // Si no existe ninguno, usar A4 invoice como fallback absoluto
-        return "pdf.a4.invoice";
+        // Usar el nuevo servicio de plantillas optimizado
+        return $this->getTemplateService()->getTemplatePath($documentType, $format, true);
     }
 
     /**
@@ -579,7 +576,7 @@ class PdfService
      */
     public function getAvailableFormats(): array
     {
-        return array_keys(self::FORMATS);
+        return $this->getTemplateService()->getAvailableFormats();
     }
 
     /**
