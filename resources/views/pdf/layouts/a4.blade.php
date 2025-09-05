@@ -39,8 +39,8 @@
     }
 
     .logo-img {
-        width: 60px;
-        height: 60px;
+        width: 120px;
+        height: 120px;
         object-fit: contain;
         vertical-align: top;
         margin-right: 10px;

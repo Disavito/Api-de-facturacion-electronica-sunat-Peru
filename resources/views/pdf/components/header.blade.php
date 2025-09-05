@@ -1,19 +1,17 @@
 {{-- PDF Header Component --}}
 {{-- Props: $company, $document, $tipo_documento_nombre, $fecha_emision, $format --}}
 
+@php
+    // Unificamos la carga de la imagen en Base64 para todos los formatos y evitar problemas de rutas con dompdf.
+    $logoPath = public_path('logo_factura.png');
 
+@endphp
 
 @if(in_array($format, ['a4', 'A4', 'a5', 'A5']))
-
- @php
-        $logo = 'logo_comprobante.jpg';
-        $imagenBase64 = "data:image/jpeg;base64," . base64_encode(file_get_contents(public_path($logo)));
-    @endphp
-
     {{-- A4 Header --}}
     <div class="header">
         <div class="logo-section">
-            <img  src="{{ $imagenBase64 }}" alt="Logo Empresa" class="logo-img">
+            <img src="data:image/png;base64,{{ base64_encode(file_get_contents($logoPath)) }}" alt="Logo Empresa" class="logo-img">
         </div>
         
         <div class="company-section">
@@ -43,7 +41,9 @@
     {{-- Ticket Header (50mm, 80mm, ticket) --}}
     <div class="header">
         <div class="logo-section-ticket">
-            <img src="{{ asset('logo_comprobante.jpg') }}"  alt="Logo Empresa" class="logo-img-ticket">
+          
+            <img src="data:image/jpg;base64,{{ base64_encode(file_get_contents($logoPath)) }}" alt="Logo Empresa" class="logo-img-ticket">
+          
         </div>
         <div class="company-name">{{ strtoupper($company->razon_social ?? 'EMPRESA') }}</div>
         <div class="company-details">

@@ -12,6 +12,7 @@ use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use Exception;
 use App\Services\PdfTemplateService;
+use Illuminate\Support\Facades\Log;
 
 class PdfService
 {
@@ -685,7 +686,7 @@ class PdfService
             return 'data:image/svg+xml;base64,' . base64_encode($svgString);
         } catch (Exception $e) {
             // Log del error para debug
-            \Log::error('Error generando QR Code: ' . $e->getMessage());
+            Log::error('Error generando QR Code: ' . $e->getMessage());
             
             // Placeholder que funciona siempre
             $placeholder = '<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
