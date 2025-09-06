@@ -2,45 +2,51 @@
 
 @section('content')
     {{-- Header --}}
-    @include('pdf.components.header', [
+    @include('pdf.components.header-ticket-exact', [
         'company' => $company, 
         'document' => $document, 
-        'tipo_documento_nombre' => $tipo_documento_nombre,
-        'fecha_emision' => $fecha_emision,
-        'format' => '80mm'
+        'tipo_documento_nombre' => $tipo_documento_nombre
     ])
 
     {{-- Reference Document --}}
-    @include('pdf.components.reference-document', [
-        'documento_afectado' => $documento_afectado,
-        'motivo' => $motivo,
-        'format' => '80mm'
-    ])
+    @if(isset($documento_afectado) || isset($motivo))
+        <div class="client-section">
+            @if(isset($documento_afectado))
+                <div class="client-details">
+                    DOC. AFECTADO: {{ $documento_afectado }}
+                </div>
+            @endif
+            @if(isset($motivo))
+                <div class="client-details">
+                    MOTIVO: {{ $motivo }}
+                </div>
+            @endif
+        </div>
+    @endif
 
     {{-- Client Info --}}
-    @include('pdf.components.client-info', [
+    @include('pdf.components.client-info-ticket-exact', [
         'client' => $client,
-        'format' => '80mm',
         'fecha_emision' => $fecha_emision
     ])
 
     {{-- Items Table --}}
-    @include('pdf.components.items-table', [
-        'detalles' => $detalles,
-        'format' => '80mm'
+    @include('pdf.components.items-table-ticket-exact', [
+        'detalles' => $detalles
     ])
 
     {{-- Totals --}}
-    @include('pdf.components.totals', [
+    @include('pdf.components.totals-ticket-exact', [
         'document' => $document,
-        'format' => '80mm',
-        'leyendas' => $leyendas ?? []
+        'totales' => $totales ?? [],
+        'total_en_letras' => $total_en_letras ?? ''
     ])
 
-    {{-- QR Code and Footer --}}
-    @include('pdf.components.qr-footer', [
-        'qr_data' => $qr_data ?? null,
-        'hash_cdr' => $hash_cdr ?? null,
-        'format' => '80mm'
+    {{-- Footer --}}
+    @include('pdf.components.footer-ticket-exact', [
+        'document' => $document,
+        'qr_code' => $qr_code ?? null,
+        'hash' => $hash ?? null,
+        'tipo_documento_nombre' => $tipo_documento_nombre ?? 'NOTA DE DÉBITO ELECTRÓNICA'
     ])
 @endsection

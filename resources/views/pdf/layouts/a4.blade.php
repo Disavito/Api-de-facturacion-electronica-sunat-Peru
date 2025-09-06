@@ -2,10 +2,12 @@
 
 @section('format-styles')
 <style>
-    /* ================= A4 FORMAT (210x297mm) ================= */
+    /* ================= BASE ================= */
     body {
+        font-family: Arial, sans-serif;
         font-size: 12px;
-        line-height: 1.4;
+        margin: 0;
+        padding: 0;
     }
 
     .container {
@@ -20,10 +22,9 @@
     /* ================= HEADER ================= */
     .header {
         display: table;
-        width: 100%;
+        width: 97%;
         border-bottom: 1px solid #000;
         padding-bottom: 15px;
-        margin-bottom: 15px;
         table-layout: fixed;
     }
 
@@ -39,237 +40,256 @@
     }
 
     .logo-img {
-        width: 120px;
-        height: 120px;
+        width: 60px;
+        height: 60px;
         object-fit: contain;
         vertical-align: top;
         margin-right: 10px;
-        display: block;
     }
 
     .company-section {
         width: 50%;
         text-align: left;
-        padding-left: 10px;
+        padding: 0 15px;
     }
 
     .company-name {
+        margin: 0 0 5px 0;
         font-size: 16px;
         font-weight: bold;
-        color: #333;
-        margin-bottom: 5px;
+        color: #000;
     }
 
     .company-details {
-        font-size: 10px;
-        color: #666;
         line-height: 1.4;
+        margin: 0;
+        font-size: 11px;
+        color: #333;
     }
 
     .document-section {
         width: 25%;
         text-align: center;
-        border: 2px solid #000;
+        vertical-align: top;
+    }
+
+    .factura-box {
+        border: 1px solid #000;
         border-radius: 8px;
         padding: 10px;
+        font-size: 11px;
+        background-color: #fff;
+        display: inline-block;
+        min-width: 180px;
     }
 
-    .document-title {
-        font-size: 14px;
+    .factura-box p {
+        margin: 2px 0;
         font-weight: bold;
-        margin-bottom: 5px;
-        color: #000;
-    }
-
-    .document-number {
-        font-size: 16px;
-        font-weight: bold;
-        color: #000;
-        margin-bottom: 5px;
-    }
-
-    .document-date {
-        font-size: 10px;
-        color: #666;
     }
 
     /* ================= CLIENT INFO ================= */
     .client-info {
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        padding: 10px;
+        margin-top: 15px;
         margin-bottom: 15px;
-        background-color: #f9f9f9;
-    }
-
-    .client-info-title {
+        display: table;
+        width: 100%;
         font-size: 12px;
-        font-weight: bold;
-        margin-bottom: 8px;
-        color: #333;
+        table-layout: fixed;
     }
 
-    .client-details {
-        display: table;
-        width: 100%;
-    }
-
-    .client-details .row {
-        display: table-row;
-    }
-
-    .client-details .label {
-        display: table-cell;
-        width: 120px;
-        font-weight: bold;
-        font-size: 10px;
-        padding: 2px 5px 2px 0;
-        color: #333;
-    }
-
-    .client-details .value {
-        display: table-cell;
-        font-size: 10px;
-        padding: 2px 0;
-        color: #000;
-    }
-
-    /* ================= ITEMS TABLE ================= */
-    .items-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 15px;
-        font-size: 10px;
-    }
-
-    .items-table th {
-        background-color: #f0f0f0;
-        font-weight: bold;
-        padding: 8px 4px;
-        border: 1px solid #000;
-        text-align: center;
-        font-size: 9px;
-    }
-
-    .items-table td {
-        padding: 5px 4px;
-        border: 1px solid #ccc;
-        vertical-align: top;
-        font-size: 9px;
-    }
-
-    /* Column widths A4 */
-    .col-codigo { width: 8%; }
-    .col-descripcion { width: 42%; }
-    .col-cantidad { width: 8%; }
-    .col-unidad { width: 8%; }
-    .col-precio { width: 10%; }
-    .col-descuento { width: 8%; }
-    .col-subtotal { width: 10%; }
-    .col-igv { width: 8%; }
-    .col-total { width: 12%; }
-
-    /* ================= TOTALS SECTION ================= */
-    .totals-section {
-        display: table;
-        width: 100%;
-        margin-bottom: 15px;
-    }
-
-    .totals-left {
+    .client-info > div {
         display: table-cell;
         width: 50%;
         vertical-align: top;
-        padding-right: 15px;
-    }
-
-    .totals-right {
-        display: table-cell;
-        width: 50%;
-        vertical-align: top;
-    }
-
-    .totals-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 10px;
-    }
-
-    .totals-table td {
-        padding: 3px 5px;
-        border-bottom: 1px dotted #ccc;
-    }
-
-    .totals-table .label {
-        text-align: left;
-        font-weight: normal;
-        width: 70%;
-    }
-
-    .totals-table .value {
-        text-align: right;
-        font-weight: bold;
-        width: 30%;
-    }
-
-    .totals-table .total-final .label,
-    .totals-table .total-final .value {
-        font-size: 12px;
-        font-weight: bold;
-        border-top: 2px solid #000;
-        border-bottom: 2px solid #000;
-        background-color: #f0f0f0;
         padding: 5px;
     }
 
-    /* ================= ADDITIONAL INFO ================= */
-    .additional-info {
-        margin-bottom: 15px;
+    .client-info p {
+        line-height: 1.6;
+        margin: 0;
+        padding: 5px 0;
     }
 
-    .additional-info .section-title {
+    /* ================= TABLA PRINCIPAL ================= */
+    .items-table {
+        border-collapse: separate;
+        border-spacing: 0;
+        width: 100%;
         font-size: 11px;
-        font-weight: bold;
+        border: 1px solid #000;
+        border-radius: 8px;
         margin-bottom: 5px;
-        color: #333;
     }
 
-    .additional-info .content {
-        font-size: 9px;
-        line-height: 1.4;
-        color: #000;
+    .items-table thead {
+        background-color: #f0f0f0;
     }
 
-    /* ================= QR CODE ================= */
-    .qr-section {
-        text-align: center;
-        margin: 15px 0;
+    .items-table th,
+    .items-table td {
+        border-right: 1px solid #000;
+        border-bottom: 1px solid #000;
+        padding: 5px;
+        text-align: left;
     }
 
-    .qr-code {
-        margin: 10px auto;
+    /* Primera columna sin borde izquierdo */
+    .items-table th:first-child,
+    .items-table td:first-child {
+        border-left: none;
     }
 
-    .qr-info {
-        font-size: 8px;
-        color: #666;
+    /* Última columna sin borde derecho */
+    .items-table th:last-child,
+    .items-table td:last-child {
+        border-right: none;
+    }
+
+    /* Última fila sin borde inferior */
+    .items-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    /* Header sin borde superior */
+    .items-table thead th {
+        border-top: none;
+    }
+
+    /* Esquinas redondeadas para el header */
+    .items-table thead th:first-child {
+        border-top-left-radius: 6px;
+    }
+
+    .items-table thead th:last-child {
+        border-top-right-radius: 6px;
+    }
+
+    /* Esquinas redondeadas para la última fila */
+    .items-table tbody tr:last-child td:first-child {
+        border-bottom-left-radius: 6px;
+    }
+
+    .items-table tbody tr:last-child td:last-child {
+        border-bottom-right-radius: 6px;
+    }
+
+    /* Columnas numéricas alineadas a la derecha */
+    .items-table th:nth-child(5),
+    .items-table th:nth-child(6),
+    .items-table td:nth-child(5),
+    .items-table td:nth-child(6) {
+        text-align: right;
+    }
+
+    /* ================= SON EN LETRAS ================= */
+    .en-letras {
         margin-top: 5px;
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        border: 1px solid #000;
+        border-radius: 8px;
     }
 
-    /* ================= FOOTER ================= */
-    .footer {
-        border-top: 1px solid #ccc;
-        padding-top: 10px;
+    .en-letras td {
         text-align: center;
-        font-size: 8px;
-        color: #666;
+        font-weight: bold;
+        padding: 6px;
+        font-size: 11px;
+        border: none;
     }
 
-    .hash-section {
+    /* ================= TOTALES ================= */
+    .totals-table {
         margin-top: 10px;
-        font-size: 7px;
-        color: #999;
-        word-break: break-all;
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        border: 1px solid #000;
+        border-radius: 8px;
+    }
+
+    .totals-table td {
+        padding: 2px 10px;
+        font-size: 11px;
+        vertical-align: top;
+        line-height: 1.2;
+        border-right: 1px solid #000;
+        border-bottom: 1px solid #000;
+    }
+
+    .totals-table td:last-child {
+        border-right: none;
+    }
+
+    .totals-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .totals-table .label {
+        text-align: right;
+        font-weight: bold;
+        width: 150px;
+    }
+
+    .totals-table .resaltado {
+        background: #f0f0f0;
+        font-weight: bold;
+    }
+
+    /* Info + QR en misma celda */
+    .qr-info-container {
+        display: table;
+        width: 100%;
+        table-layout: fixed;
+    }
+
+    .qr-section {
+        display: table-cell;
+        width: 130px;
+        vertical-align: top;
+        text-align: center;
+        padding-right: 10px;
+    }
+
+    .qr-section img {
+        width: 100px;
+        height: 100px;
+        display: block;
+        margin: 0 auto;
+    }
+
+    .info-footer {
+        display: table-cell;
+        font-size: 10px;
+        text-align: left;
+        vertical-align: top;
+        padding-left: 10px;
+        line-height: 1.4;
+    }
+
+    /* ================= FOOTER EXTRA ================= */
+    .footer {
+        margin-top: 20px;
+        padding: 15px;
+        border: 1px solid #000;
+        border-radius: 8px;
+        background-color: #f9f9f9;
+        font-size: 10px;
+        line-height: 1.4;
+    }
+
+    /* ================= PRINT ================= */
+    @media print {
+        body {
+            margin: 0;
+        }
+
+        .container {
+            border: none;
+            padding: 0;
+        }
     }
 </style>
 @endsection

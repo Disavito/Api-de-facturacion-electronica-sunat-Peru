@@ -2,35 +2,23 @@
 {{-- Props: $client, $format, $fecha_emision (optional) --}}
 
 @if(in_array($format, ['a4', 'A4', 'a5', 'A5']))
-    {{-- A4 Client Info --}}
+    {{-- A4/A5 Client Info --}}
     <div class="client-info">
-        <div class="client-info-title">INFORMACIÓN DEL CLIENTE</div>
-        <div class="client-details">
-            <div class="row">
-                <div class="label">Razón Social / Nombre:</div>
-                <div class="value">{{ strtoupper($client['razon_social'] ?? $client['nombre'] ?? 'CLIENTE') }}</div>
-            </div>
-            
-            @if(isset($client['numero_documento']))
-                <div class="row">
-                    <div class="label">{{ $client['tipo_documento'] == '6' ? 'RUC' : ($client['tipo_documento'] == '1' ? 'DNI' : 'Documento') }}:</div>
-                    <div class="value">{{ $client['numero_documento'] }}</div>
-                </div>
-            @endif
-            
-            @if(isset($client['direccion']) && $client['direccion'])
-                <div class="row">
-                    <div class="label">Dirección:</div>
-                    <div class="value">{{ $client['direccion'] }}</div>
-                </div>
-            @endif
-            
-            @if(isset($fecha_emision))
-                <div class="row">
-                    <div class="label">Fecha de Emisión:</div>
-                    <div class="value">{{ $fecha_emision }}</div>
-                </div>
-            @endif
+        <div>
+            <p>
+                <b>{{ $client['tipo_documento'] == '6' ? 'RUC' : 'DNI' }}:</b> {{ $client['numero_documento'] ?? 'N/A' }}<br>
+                <b>CLIENTE:</b> {{ $client['razon_social'] ?? 'CLIENTE' }}<br>
+                @if(isset($client['direccion']) && $client['direccion'])
+                    <b>DIRECCIÓN:</b> {{ $client['direccion'] }}
+                @endif
+            </p>
+        </div>
+        <div>
+            <p>
+                <b>FECHA EMISIÓN:</b> {{ $fecha_emision }}<br>
+                <b>FECHA VENCIMIENTO:</b> {{ $fecha_vencimiento ?? '-' }}<br>
+                <b>MONEDA:</b> {{ $totales['moneda_nombre'] ?? 'SOLES' }}
+            </p>
         </div>
     </div>
 @else

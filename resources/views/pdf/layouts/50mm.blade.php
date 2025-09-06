@@ -2,13 +2,15 @@
 
 @section('format-styles')
 <style>
-    /* ================= 50MM TICKET FORMAT ================= */
+    /* ================= BASE ================= */
     body {
-        font-size: 7px;
-        line-height: 1.1;
-        color: #333;
+        font-family: Arial, sans-serif;
+        font-size: 9px;
+        margin: 0;
         padding: 2px;
+        color: #000;
         width: 46mm;
+        line-height: 1.1;
     }
 
     .container {
@@ -19,209 +21,270 @@
     /* ================= HEADER ================= */
     .header {
         text-align: center;
-        margin-bottom: 6px;
-        border-bottom: 1px dashed #000;
-        padding-bottom: 4px;
+        margin-bottom: 3px;
     }
 
     .logo-section-ticket {
         text-align: center;
-        margin-bottom: 3px;
+        margin-bottom: 2px;
     }
 
     .logo-img-ticket {
-        width: 30px;
-        height: 30px;
+        width: 35px;
+        height: 15px;
         object-fit: contain;
         display: block;
-        margin: 0 auto 3px;
+        margin: 0 auto 2px;
+        background-color: #000;
+        padding: 2px;
     }
 
     .company-name {
-        font-size: 8px;
+        font-size: 9px;
         font-weight: bold;
         margin-bottom: 2px;
         text-transform: uppercase;
+        color: #000;
+    }
+
+    .company-ruc {
+        font-size: 7px;
+        font-weight: bold;
+        margin-bottom: 1px;
     }
 
     .company-details {
         font-size: 6px;
-        line-height: 1.0;
+        line-height: 1.2;
         margin-bottom: 3px;
     }
 
-    .document-info {
-        font-size: 7px;
-        font-weight: bold;
-        margin: 3px 0;
-        border-top: 1px solid #000;
-        border-bottom: 1px solid #000;
-        padding: 3px 0;
-    }
-
+    /* ================= DOCUMENT TITLE ================= */
     .document-title {
         font-size: 8px;
         font-weight: bold;
+        text-align: center;
+        margin: 4px 0;
+        text-transform: uppercase;
+    }
+
+    .document-number {
+        font-size: 8px;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 4px;
     }
 
     /* ================= CLIENT INFO ================= */
     .client-section {
-        margin: 4px 0;
-        font-size: 6px;
-        border-bottom: 1px dashed #000;
-        padding-bottom: 4px;
+        margin: 3px 0;
+        font-size: 7px;
     }
 
-    .client-row {
-        margin-bottom: 1px;
-        word-wrap: break-word;
-    }
-
-    .client-label {
+    .client-name {
         font-weight: bold;
+        font-size: 7px;
+        text-align: center;
+        margin-bottom: 2px;
     }
 
-    /* ================= DOCUMENT DETAILS ================= */
-    .document-details {
-        margin: 4px 0;
+    .client-separator {
+        text-align: center;
+        margin: 1px 0;
+        font-size: 7px;
+    }
+
+    .client-details {
         font-size: 6px;
-        border-bottom: 1px dashed #000;
-        padding-bottom: 4px;
-    }
-
-    .detail-row {
-        margin-bottom: 1px;
-    }
-
-    /* ================= TABLE ================= */
-    .items-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 4px 0;
-        font-size: 6px;
-    }
-
-    .items-table th {
-        background: #f0f0f0;
-        font-weight: bold;
-        padding: 2px 1px;
-        border: 1px solid #000;
+        margin-bottom: 2px;
         text-align: center;
     }
 
-    .items-table td {
-        padding: 2px 1px;
-        border: 1px solid #ccc;
+    /* ================= ITEMS TABLE ================= */
+    .items-header {
+        border-top: 1px solid #000;
+        border-bottom: 1px solid #000;
+        padding: 1px 0;
+        font-size: 6px;
+        font-weight: bold;
+        margin: 2px 0;
+        display: table;
+        width: 100%;
+        table-layout: fixed;
+    }
+
+    .items-header > div {
+        display: table-cell;
+        text-align: center;
+        vertical-align: middle;
+        padding: 1px;
+    }
+
+    .header-cant { width: 15%; }
+    .header-um { width: 10%; }
+    .header-cod { width: 15%; }
+    .header-precio { width: 25%; }
+    .header-total { width: 20%; }
+    .header-desc { width: 15%; }
+
+    .items-section {
+        margin: 2px 0;
+        border-bottom: 1px solid #000;
+        padding-bottom: 2px;
+    }
+
+    .item {
+        margin-bottom: 1px;
+        font-size: 6px;
+        display: table;
+        width: 100%;
+        table-layout: fixed;
+    }
+
+    .item > div {
+        display: table-cell;
         text-align: center;
         vertical-align: top;
+        padding: 1px;
     }
 
-    /* Column widths 50mm */
-    .col-codigo { width: 15%; }
-    .col-descripcion { width: 35%; }
-    .col-cantidad { width: 12%; }
-    .col-precio { width: 18%; }
-    .col-total { width: 20%; }
+    .item-cant { width: 15%; }
+    .item-um { width: 10%; }
+    .item-cod { width: 15%; }
+    .item-precio { width: 25%; }
+    .item-total { width: 20%; }
+    .item-desc { width: 15%; }
+
+    .item-descripcion {
+        font-size: 6px;
+        text-align: left;
+        margin-top: 1px;
+    }
 
     /* ================= TOTALS ================= */
     .totals-section {
-        margin: 4px 0;
+        margin: 2px 0;
         font-size: 6px;
-        border-top: 1px dashed #000;
-        padding-top: 4px;
+        border-top: 1px solid #000;
+        padding-top: 2px;
     }
 
-    .totals-table {
+    .total-line {
+        display: block;
         width: 100%;
-    }
-
-    .totals-table td {
-        padding: 1px 0;
-    }
-
-    .totals-table .label {
-        text-align: left;
-        width: 60%;
-    }
-
-    .totals-table .value {
-        text-align: right;
-        width: 40%;
+        margin-bottom: 1px;
         font-weight: bold;
+        font-size: 6px;
+        line-height: 1.3;
+        position: relative;
+    }
+
+    .total-text {
+        display: inline-block;
+        float: left;
+        font-weight: bold;
+    }
+
+    .total-value {
+        display: inline-block;
+        float: right;
+        font-weight: bold;
+    }
+
+    .total-dots {
+        display: inline-block;
+        float: left;
+        font-weight: normal;
+        letter-spacing: 0.3px;
+        overflow: hidden;
+        margin: 0 1px;
     }
 
     .total-final {
         border-top: 1px solid #000;
-        margin-top: 2px;
         padding-top: 2px;
-    }
-
-    .total-final .label,
-    .total-final .value {
-        font-weight: bold;
+        margin-top: 1px;
         font-size: 7px;
     }
 
-    /* ================= ADDITIONAL INFO ================= */
-    .additional-info {
-        margin: 4px 0;
-        font-size: 6px;
-        border-top: 1px dashed #000;
-        padding-top: 4px;
-    }
-
-    .additional-info .section {
-        margin-bottom: 3px;
-    }
-
-    .additional-info .section-title {
+    .total-final .total-text,
+    .total-final .total-value {
+        font-size: 7px;
         font-weight: bold;
+    }
+
+    /* Clear floats */
+    .total-line::after {
+        content: "";
+        display: table;
+        clear: both;
+    }
+
+    .total-letras {
+        font-size: 6px;
+        font-weight: bold;
+        margin: 2px 0;
+        text-align: left;
+    }
+
+    /* ================= PAYMENT INFO ================= */
+    .payment-info {
+        font-size: 6px;
+        margin: 2px 0;
+        text-align: left;
+    }
+
+    .payment-info div {
         margin-bottom: 1px;
     }
 
-    /* ================= QR CODE ================= */
+    /* ================= QR AND FOOTER ================= */
     .qr-section {
         text-align: center;
-        margin: 4px 0;
-        border-top: 1px dashed #000;
-        padding-top: 4px;
+        margin: 3px 0;
     }
 
-    .qr-code {
-        margin: 3px auto;
+    .qr-code img {
+        width: 40px;
+        height: 40px;
+        margin: 2px 0;
     }
 
-    .qr-info {
+    .footer-text {
         font-size: 5px;
-        margin-top: 2px;
-    }
-
-    /* ================= FOOTER ================= */
-    .footer {
         text-align: center;
-        margin-top: 6px;
-        border-top: 1px solid #000;
-        padding-top: 3px;
+        line-height: 1.2;
+        margin: 1px 0;
+    }
+
+    .footer-url {
         font-size: 5px;
-    }
-
-    .hash-section {
-        word-break: break-all;
-        font-size: 4px;
-        margin-top: 2px;
-    }
-
-    /* ================= REFERENCE DOC ================= */
-    .reference-doc {
-        margin: 4px 0;
-        font-size: 6px;
-        border-bottom: 1px dashed #000;
-        padding-bottom: 4px;
-    }
-
-    .reference-doc .section-title {
+        text-align: center;
         font-weight: bold;
-        margin-bottom: 2px;
+        margin: 1px 0;
+    }
+
+    .footer-auth {
+        font-size: 4px;
+        text-align: center;
+        margin: 1px 0;
+        word-break: break-all;
+    }
+
+    .powered-by {
+        font-size: 4px;
+        text-align: center;
+        margin-top: 1px;
+    }
+
+    /* ================= UTILITIES ================= */
+    .text-bold { font-weight: bold; }
+    .text-center { text-align: center; }
+    .text-left { text-align: left; }
+    .text-right { text-align: right; }
+
+    @media print {
+        body { margin: 0; padding: 1px; }
     }
 </style>
 @endsection

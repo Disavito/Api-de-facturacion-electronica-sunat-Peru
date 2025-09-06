@@ -8,7 +8,7 @@
 @endphp
 
 @if(in_array($format, ['a4', 'A4', 'a5', 'A5']))
-    {{-- A4 Header --}}
+    {{-- A4/A5 Header --}}
     <div class="header">
         <div class="logo-section">
             <img src="data:image/png;base64,{{ base64_encode(file_get_contents($logoPath)) }}" alt="Logo Empresa" class="logo-img">
@@ -17,24 +17,30 @@
         <div class="company-section">
             <div class="company-name">{{ strtoupper($company->razon_social ?? 'EMPRESA') }}</div>
             <div class="company-details">
-                @if($company->nombre_comercial)
-                    <strong>{{ $company->nombre_comercial }}</strong><br>
+                @if($company->direccion)
+                    {{ $company->direccion }}<br>
                 @endif
-                <strong>RUC:</strong> {{ $company->ruc ?? '' }}<br>
-                <strong>Dirección:</strong> {{ $company->direccion ?? '' }}<br>
+                @if($company->distrito || $company->provincia || $company->departamento)
+                    {{ $company->distrito ? $company->distrito . ', ' : '' }}{{ $company->provincia ? $company->provincia . ', ' : '' }}{{ $company->departamento }}<br>
+                @endif
                 @if($company->telefono)
-                    <strong>Teléfono:</strong> {{ $company->telefono }}<br>
+                    TELÉFONO: {{ $company->telefono }}<br>
                 @endif
                 @if($company->email)
-                    <strong>Email:</strong> {{ $company->email }}
+                    EMAIL: {{ $company->email }}<br>
+                @endif
+                @if($company->web)
+                    WEB: {{ $company->web }}
                 @endif
             </div>
         </div>
         
         <div class="document-section">
-            <div class="document-title">{{ strtoupper($tipo_documento_nombre) }}</div>
-            <div class="document-number">{{ $document->numero_completo }}</div>
-            <div class="document-date">{{ $fecha_emision }}</div>
+            <div class="factura-box">
+                <p><b>RUC {{ $company->ruc ?? 'N/A' }}</b></p>
+                <p><b>{{ strtoupper($tipo_documento_nombre ?? 'FACTURA ELECTRÓNICA') }}</b></p>
+                <p><b>{{ $document->serie }}-{{ str_pad($document->correlativo, 6, '0', STR_PAD_LEFT) }}</b></p>
+            </div>
         </div>
     </div>
 @else

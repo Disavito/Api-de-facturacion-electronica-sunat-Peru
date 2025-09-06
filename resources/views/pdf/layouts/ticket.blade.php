@@ -2,13 +2,16 @@
 
 @section('format-styles')
 <style>
-    /* ================= TICKET FORMAT SPECIFIC ================= */
+    /* ================= BASE ================= */
     body {
-        font-size: 7px;
+        font-family: Arial, sans-serif;
+        font-size: 9px;
+        margin: 0;
+        padding: 2px;
         color: #333;
-        padding: 3px;
         width: 46mm;
     }
+
     .container {
         width: 100%;
         padding: 0;
@@ -17,35 +20,52 @@
     /* ================= HEADER ================= */
     .header {
         text-align: center;
-        margin-bottom: 6px;
+        margin-bottom: 4px;
         border-bottom: 1px dashed #000;
-        padding-bottom: 4px;
+        padding-bottom: 3px;
     }
 
-    .company-name {
-        font-size: 8px;
-        font-weight: bold;
+    .logo-section-ticket {
+        text-align: center;
         margin-bottom: 2px;
     }
 
+    .logo-img-ticket {
+        width: 30px;
+        height: 30px;
+        object-fit: contain;
+        display: block;
+        margin: 0 auto 2px;
+    }
+
+    .company-name {
+        font-size: 10px;
+        font-weight: bold;
+        margin-bottom: 2px;
+        text-transform: uppercase;
+    }
+
     .company-details {
-        font-size: 6px;
+        font-size: 8px;
         line-height: 1.1;
-        margin-bottom: 3px;
+        margin-bottom: 2px;
     }
 
     .document-info {
-        font-size: 7px;
+        font-size: 9px;
         font-weight: bold;
-        margin: 3px 0;
+        margin: 2px 0;
+        border-top: 1px solid #000;
+        border-bottom: 1px solid #000;
+        padding: 2px 0;
     }
 
     /* ================= CLIENT INFO ================= */
     .client-section {
-        margin: 4px 0;
-        font-size: 6px;
+        margin: 3px 0;
+        font-size: 8px;
         border-bottom: 1px dashed #000;
-        padding-bottom: 4px;
+        padding-bottom: 3px;
     }
 
     .client-row {
@@ -59,94 +79,170 @@
 
     /* ================= DOCUMENT DETAILS ================= */
     .document-details {
-        margin: 4px 0;
-        font-size: 6px;
+        margin: 3px 0;
+        font-size: 8px;
         border-bottom: 1px dashed #000;
-        padding-bottom: 4px;
+        padding-bottom: 3px;
     }
 
     .detail-row {
         margin-bottom: 1px;
     }
 
-    /* ================= TABLE ================= */
-    .items-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 4px 0;
-        font-size: 6px;
+    /* ================= ITEMS (SUNAT STANDARD) ================= */
+    .items-section {
+        margin: 3px 0;
+        border-top: 1px dashed #000;
+        border-bottom: 1px dashed #000;
+        padding: 2px 0;
     }
 
-    .items-table th {
-        background: #f0f0f0;
+    .item {
+        margin-bottom: 2px;
+    }
+
+    .item-line {
         font-weight: bold;
-        padding: 2px 1px;
-        border: 1px solid #000;
-        text-align: center;
+        font-size: 9px;
+        line-height: 1.2;
     }
 
-    .items-table td {
-        padding: 2px 1px;
-        border: 1px solid #ccc;
-        text-align: center;
+    .item-details {
+        font-size: 7px;
+        color: #666;
+        margin-top: 1px;
+        text-align: right;
     }
 
-    /* Column widths for ticket */
-    .col-codigo { width: 15%; }
-    .col-descripcion { width: 35%; }
-    .col-cantidad { width: 12%; }
-    .col-precio { width: 18%; }
-    .col-total { width: 20%; }
+    .text-left { text-align: left; }
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
 
     /* ================= TOTALS ================= */
     .totals-section {
-        margin: 4px 0;
-        font-size: 6px;
-        border-top: 1px dashed #000;
-        padding-top: 4px;
+        margin-top: 3px;
+        font-size: 7px;
+        border-top: 1px solid #000;
+        padding-top: 2px;
     }
 
-    .totals-table {
+    .total-line {
+        display: block;
         width: 100%;
-    }
-
-    .totals-table td {
-        padding: 1px 0;
-    }
-
-    .totals-table .label {
-        text-align: left;
-        width: 60%;
-    }
-
-    .totals-table .value {
-        text-align: right;
-        width: 40%;
+        margin-bottom: 1px;
         font-weight: bold;
+        font-size: 7px;
+        line-height: 1.3;
+        position: relative;
+    }
+
+    .total-text {
+        display: inline-block;
+        float: left;
+        font-weight: bold;
+    }
+
+    .total-value {
+        display: inline-block;
+        float: right;
+        font-weight: bold;
+    }
+
+    .total-dots {
+        display: inline-block;
+        float: left;
+        font-weight: normal;
+        letter-spacing: 0.3px;
+        overflow: hidden;
+        margin: 0 1px;
     }
 
     .total-final {
         border-top: 1px solid #000;
-        margin-top: 2px;
         padding-top: 2px;
+        margin-top: 1px;
+        font-size: 8px;
     }
 
-    .total-final .label,
-    .total-final .value {
+    .total-final .total-text,
+    .total-final .total-value {
+        font-size: 8px;
         font-weight: bold;
+    }
+
+    /* Clear floats */
+    .total-line::after {
+        content: "";
+        display: table;
+        clear: both;
+    }
+
+    /* ================= QR CODE ================= */
+    .qr-section {
+        text-align: center;
+        margin: 3px 0;
+        border-top: 1px dashed #000;
+        padding-top: 3px;
+    }
+
+    .qr-code {
+        margin: 2px auto;
+    }
+
+    .qr-code img {
+        width: 35px;
+        height: 35px;
+    }
+
+    .qr-info {
+        font-size: 4px;
+        margin-top: 1px;
+    }
+
+    /* ================= FOOTER ================= */
+    .footer-section {
+        margin-top: 4px;
+        text-align: center;
+        font-size: 6px;
+        border-top: 1px dashed #000;
+        padding-top: 3px;
+    }
+
+    .footer {
+        text-align: center;
+        margin-top: 4px;
+        border-top: 1px solid #000;
+        padding-top: 2px;
+        font-size: 6px;
+    }
+
+    .hash-section {
+        word-break: break-all;
+        font-size: 4px;
+        margin-top: 1px;
+    }
+
+    .en-letras {
         font-size: 7px;
+        font-weight: bold;
+        text-align: center;
+        margin: 3px 0;
+        word-wrap: break-word;
+        border-top: 1px dashed #000;
+        border-bottom: 1px dashed #000;
+        padding: 2px 0;
     }
 
     /* ================= ADDITIONAL INFO ================= */
     .additional-info {
-        margin: 4px 0;
-        font-size: 6px;
+        margin: 3px 0;
+        font-size: 7px;
         border-top: 1px dashed #000;
-        padding-top: 4px;
+        padding-top: 3px;
     }
 
     .additional-info .section {
-        margin-bottom: 3px;
+        margin-bottom: 2px;
     }
 
     .additional-info .section-title {
@@ -154,49 +250,29 @@
         margin-bottom: 1px;
     }
 
-    /* ================= QR CODE ================= */
-    .qr-section {
-        text-align: center;
-        margin: 4px 0;
-        border-top: 1px dashed #000;
-        padding-top: 4px;
-    }
-
-    .qr-code {
-        margin: 3px auto;
-    }
-
-    .qr-info {
-        font-size: 5px;
-        margin-top: 2px;
-    }
-
-    /* ================= FOOTER ================= */
-    .footer {
-        text-align: center;
-        margin-top: 5px;
-        border-top: 1px solid #000;
-        padding-top: 3px;
-        font-size: 6px;
-    }
-
-    .hash-section {
-        word-break: break-all;
-        font-size: 5px;
-        margin-top: 2px;
-    }
-
     /* ================= REFERENCE DOC ================= */
     .reference-doc {
-        margin: 4px 0;
-        font-size: 6px;
+        margin: 3px 0;
+        font-size: 8px;
         border-bottom: 1px dashed #000;
-        padding-bottom: 4px;
+        padding-bottom: 3px;
     }
 
     .reference-doc .section-title {
         font-weight: bold;
-        margin-bottom: 2px;
+        margin-bottom: 1px;
+    }
+
+    /* ================= UTILITIES ================= */
+    .text-bold { font-weight: bold; }
+    .text-upper { text-transform: uppercase; }
+    .dashed-line {
+        border-bottom: 1px dashed #000;
+        margin: 2px 0;
+    }
+
+    @media print {
+        body { margin: 0; padding: 1px; }
     }
 </style>
 @endsection
