@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HandlesPdfGeneration;
 use App\Models\Boleta;
 use App\Services\DocumentService;
+use App\Services\FileService;
 use App\Http\Requests\IndexBoletaRequest;
 use App\Http\Requests\StoreBoletaRequest;
 use App\Http\Requests\CreateDailySummaryRequest;
@@ -14,11 +16,14 @@ use Illuminate\Http\JsonResponse;
 
 class BoletaController extends Controller
 {
+    use HandlesPdfGeneration;
     protected $documentService;
+    protected $fileService;
 
-    public function __construct(DocumentService $documentService)
+    public function __construct(DocumentService $documentService, FileService $fileService)
     {
         $this->documentService = $documentService;
+        $this->fileService = $fileService;
     }
 
     public function index(IndexBoletaRequest $request): JsonResponse
@@ -120,18 +125,28 @@ class BoletaController extends Controller
                     'message' => 'Boleta enviada exitosamente a SUNAT'
                 ]);
             } else {
-                $errorMessage = 'Error al enviar a SUNAT';
-                $errorCode = null;
+                // Manejar diferentes tipos de error
+                $errorCode = 'UNKNOWN';
+                $errorMessage = 'Error desconocido';
                 
-                if (isset($result['error'])) {
-                    $errorMessage .= ': ' . $result['error']->message;
-                    $errorCode = $result['error']->code ?? null;
+                if (is_object($result['error'])) {
+                    if (method_exists($result['error'], 'getCode')) {
+                        $errorCode = $result['error']->getCode();
+                    } elseif (property_exists($result['error'], 'code')) {
+                        $errorCode = $result['error']->code;
+                    }
+                    
+                    if (method_exists($result['error'], 'getMessage')) {
+                        $errorMessage = $result['error']->getMessage();
+                    } elseif (property_exists($result['error'], 'message')) {
+                        $errorMessage = $result['error']->message;
+                    }
                 }
-
+                
                 return response()->json([
                     'success' => false,
-                    'data' => $result['document']->load(['company', 'branch', 'client']),
-                    'message' => $errorMessage,
+                    'data' => $result['document'],
+                    'message' => 'Error al enviar a SUNAT: ' . $errorMessage,
                     'error_code' => $errorCode
                 ], 400);
             }
@@ -193,29 +208,10 @@ class BoletaController extends Controller
         }
     }
 
-    public function downloadPdf(string $id): \Symfony\Component\HttpFoundation\Response
+    public function downloadPdf($id, Request $request)
     {
-        try {
-            $boleta = Boleta::findOrFail($id);
-            
-            if (empty($boleta->pdf_path) || !file_exists(storage_path('app/' . $boleta->pdf_path))) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'PDF no encontrado'
-                ], 404);
-            }
-
-            return response()->download(
-                storage_path('app/' . $boleta->pdf_path),
-                $boleta->numero_completo . '.pdf',
-                ['Content-Type' => 'application/pdf']
-            );
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al descargar PDF: ' . $e->getMessage()
-            ], 500);
-        }
+        $boleta = Boleta::findOrFail($id);
+        return $this->downloadDocumentPdf($boleta, $request);
     }
 
     public function createDailySummaryFromDate(CreateDailySummaryRequest $request): JsonResponse
@@ -334,5 +330,11 @@ class BoletaController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    public function generatePdf($id, Request $request)
+    {
+        $boleta = Boleta::with(['company', 'branch', 'client'])->findOrFail($id);
+        return $this->generateDocumentPdf($boleta, 'boleta', $request);
     }
 }

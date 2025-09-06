@@ -21,16 +21,14 @@ class PdfController extends Controller
     public function getAvailableFormats(): JsonResponse
     {
         try {
-            $formats = $this->pdfService->getAvailableFormats();
-            
+            // Usar directamente las constantes de PdfService para evitar confusión
             $formatDetails = [];
-            foreach ($formats as $format) {
-                $formatConfig = PdfService::FORMATS[$format];
+            foreach (PdfService::FORMATS as $format => $config) {
                 $formatDetails[] = [
                     'name' => $format,
-                    'width' => $formatConfig['width'],
-                    'height' => $formatConfig['height'],
-                    'unit' => $formatConfig['unit'],
+                    'width' => $config['width'],
+                    'height' => $config['height'],
+                    'unit' => $config['unit'],
                     'description' => $this->getFormatDescription($format)
                 ];
             }
@@ -60,6 +58,7 @@ class PdfController extends Controller
             'A5' => 'Formato medio, ideal para reportes compactos (148x210mm)',
             '80mm' => 'Formato ticket térmico estándar (80x200mm)',
             '50mm' => 'Formato ticket térmico compacto (50x150mm)',
+            'ticket' => 'Formato ticket optimizado (50x150mm)',
             default => 'Formato personalizado'
         };
     }

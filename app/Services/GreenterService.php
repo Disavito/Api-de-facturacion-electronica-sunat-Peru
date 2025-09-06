@@ -134,6 +134,7 @@ class GreenterService
 
     public function createInvoice(array $invoiceData): GreenterInvoice
     {
+        
         $invoice = new GreenterInvoice();
         
         // Configuración básica
@@ -694,8 +695,10 @@ class GreenterService
         $summary = new Summary();
         
         // Configuración básica
-        $summary->setFecGeneracion(new \DateTime($summaryData['fecha_generacion']))
-                ->setFecResumen(new \DateTime($summaryData['fecha_resumen']))
+        
+        // DEBUG: Intentar intercambiando los parámetros
+        $summary->setFecGeneracion(new \DateTime($summaryData['fecha_resumen']))
+                ->setFecResumen(new \DateTime($summaryData['fecha_generacion']))
                 ->setCorrelativo($summaryData['correlativo'])
                 ->setCompany($this->getGreenterCompany());
 

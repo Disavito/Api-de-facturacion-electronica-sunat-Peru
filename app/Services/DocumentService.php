@@ -133,7 +133,7 @@ class DocumentService
                 'redondeo' => $data['redondeo'] ?? 0,
             ];
             
-            // Calcular totales automáticamente
+            // Calcular totales automáticamente (esto modifica $data['detalles'] por referencia)
             $totals = $this->calculateTotals($data['detalles'], $globalData);
             
             // Crear boleta
@@ -154,7 +154,10 @@ class DocumentService
                 'mto_oper_exoneradas' => $totals['mto_oper_exoneradas'],
                 'mto_oper_inafectas' => $totals['mto_oper_inafectas'],
                 'mto_oper_gratuitas' => $totals['mto_oper_gratuitas'],
+                'mto_igv_gratuitas' => $totals['mto_igv_gratuitas'],
                 'mto_igv' => $totals['mto_igv'],
+                'mto_base_ivap' => $totals['mto_base_ivap'],
+                'mto_ivap' => $totals['mto_ivap'],
                 'mto_isc' => $totals['mto_isc'],
                 'mto_icbper' => $totals['mto_icbper'],
                 'total_impuestos' => $totals['total_impuestos'],
@@ -352,8 +355,9 @@ class DocumentService
             $igv = 0;
             if ($tipAfeIgv === '10') { // Gravado - paga IGV
                 $igv = round($mtoBaseIgv * ($porcentajeIgv / 100), 2);
-            } elseif ($tipAfeIgv === '17') { // IVAP - paga IVAP (4%)
-                $igv = round($mtoBaseIgv * ($porcentajeIgv / 100), 2); // IVAP se maneja igual que IGV
+            } elseif ($tipAfeIgv === '17') { // IVAP - paga IVAP (normalmente 2%)
+                $porcentajeIvap = $detalle['porcentaje_ivap'] ?? $porcentajeIgv ?? 2; // Usar porcentaje_ivap específico
+                $igv = round($mtoBaseIgv * ($porcentajeIvap / 100), 2);
             }
             // Para '20' (exonerado), '30' (inafecto), '40' (exportación): IGV = 0 pero base = valor_venta
 
@@ -369,7 +373,7 @@ class DocumentService
                 $mtoValorVenta = $cantidad * $mtoValorGratuito;
                 $mtoBaseIgv = $mtoValorVenta;
 
-                if (in_array($tipAfeIgv, ['11', '12', '13', '14', '15', '16', '17'])) {
+                if (in_array($tipAfeIgv, ['11', '12', '13', '14', '15', '16'])) {
                     // Calcular IGV EXACTO para cada línea
                     $igv = round($mtoValorVenta * ($porcentajeIgv / 100), 2);
 
@@ -615,8 +619,16 @@ class DocumentService
         
         // Procesar detalles para completar campos de tributos
         $detalles = $data['detalles'];
-        $this->calculateTotals($detalles, $globalData); // Esto completa los campos faltantes en los detalles
+        $totals = $this->calculateTotals($detalles, $globalData); // Esto completa los campos faltantes en los detalles
         $data['detalles'] = $detalles;
+        
+        // Actualizar totales recalculados (crítico para operaciones gratuitas e IVAP)
+        $data['mto_oper_gratuitas'] = $totals['mto_oper_gratuitas'];
+        $data['mto_igv_gratuitas'] = $totals['mto_igv_gratuitas'];
+        $data['mto_igv'] = $totals['mto_igv'];
+        $data['mto_base_ivap'] = $totals['mto_base_ivap'];
+        $data['mto_ivap'] = $totals['mto_ivap'];
+        $data['total_impuestos'] = $totals['total_impuestos'];
         
         return $data;
     }
@@ -833,9 +845,13 @@ class DocumentService
 
     protected function prepareSummaryData(DailySummary $summary): array
     {
+        // Forzar fecha de generación como hoy para evitar problemas de zona horaria
+        $fechaGeneracion = now()->format('Y-m-d');
+        $fechaResumen = $summary->fecha_resumen->toDateString();
+        
         return [
-            'fecha_generacion' => $summary->fecha_generacion->toDateString(),
-            'fecha_resumen' => $summary->fecha_resumen->toDateString(),
+            'fecha_generacion' => $fechaGeneracion,
+            'fecha_resumen' => $fechaResumen,
             'correlativo' => $summary->correlativo,
             'detalles' => $summary->detalles,
         ];
