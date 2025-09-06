@@ -11,6 +11,7 @@ use App\Models\CreditNote;
 use App\Models\DebitNote;
 use App\Models\DailySummary;
 use App\Models\Retention;
+use App\Models\VoidedDocument;
 use App\Services\GreenterService;
 use App\Services\FileService;
 use App\Services\PdfService;
@@ -969,6 +970,8 @@ class DocumentService
                 'fecha_emision' => $data['fecha_emision'],
                 'ubl_version' => $data['ubl_version'] ?? '2.1',
                 'moneda' => $data['moneda'] ?? 'PEN',
+                'forma_pago_tipo' => $data['forma_pago_tipo'] ?? 'Contado',
+                'forma_pago_cuotas' => $data['forma_pago_cuotas'] ?? null,
                 'valor_venta' => $valorVenta,
                 'mto_oper_gravadas' => $mtoOperGravadas,
                 'mto_oper_exoneradas' => $mtoOperExoneradas,
@@ -1523,5 +1526,344 @@ class DocumentService
     public function generateRetentionPdf(Retention $retention): void
     {
         $this->generateDocumentPdf($retention, 'retention');
+    }
+
+    public function createVoidedDocument(array $data): VoidedDocument
+    {
+        return DB::transaction(function () use ($data) {
+            // Validar y obtener entidades
+            $company = Company::findOrFail($data['company_id']);
+            $branch = Branch::where('company_id', $company->id)
+                           ->where('id', $data['branch_id'])
+                           ->firstOrFail();
+            
+            // Obtener siguiente correlativo para la fecha
+            $correlativo = $this->getNextVoidedDocumentCorrelative($company->id, $data['fecha_referencia']);
+            
+            // Crear comunicación de baja
+            $voidedDocument = VoidedDocument::create([
+                'company_id' => $company->id,
+                'branch_id' => $branch->id,
+                'tipo_documento' => 'RA',
+                'correlativo' => $correlativo,
+                'fecha_emision' => now()->toDateString(), // Fecha de comunicación (hoy)
+                'fecha_referencia' => $data['fecha_referencia'], // Fecha de documentos a anular
+                'ubl_version' => $data['ubl_version'] ?? '2.0',
+                'detalles' => $data['detalles'],
+                'motivo_baja' => $data['motivo_baja'],
+                'total_documentos' => count($data['detalles']),
+                'estado_sunat' => 'PENDIENTE',
+                'usuario_creacion' => $data['usuario_creacion'] ?? null,
+            ]);
+
+            return $voidedDocument;
+        });
+    }
+
+    public function sendVoidedDocumentToSunat(VoidedDocument $voidedDocument): array
+    {
+        try {
+            $company = $voidedDocument->company;
+            $greenterService = new GreenterService($company);
+            
+            // Preparar datos para Greenter
+            $voidedData = $this->prepareVoidedDocumentData($voidedDocument);
+            
+            // Crear documento Greenter
+            $greenterVoided = $greenterService->createVoidedDocument($voidedData);
+            
+            // Enviar a SUNAT
+            $result = $greenterService->sendVoidedDocument($greenterVoided);
+            
+            if ($result['success']) {
+                // Guardar archivos
+                $xmlPath = $this->fileService->saveXml($voidedDocument, $result['xml']);
+                
+                // Actualizar la comunicación de baja
+                $voidedDocument->update([
+                    'xml_path' => $xmlPath,
+                    'estado_sunat' => 'ENVIADO',
+                    'ticket' => $result['ticket'],
+                    'codigo_hash' => $this->extractHashFromXml($result['xml']),
+                ]);
+                
+                return [
+                    'success' => true,
+                    'document' => $voidedDocument->fresh(),
+                    'ticket' => $result['ticket']
+                ];
+            } else {
+                // Error al enviar
+                $voidedDocument->update([
+                    'estado_sunat' => 'ERROR',
+                    'respuesta_sunat' => json_encode([
+                        'code' => $result['error']->code ?? 'UNKNOWN',
+                        'message' => $result['error']->message ?? 'Error desconocido'
+                    ])
+                ]);
+                
+                return [
+                    'success' => false,
+                    'document' => $voidedDocument->fresh(),
+                    'error' => $result['error']
+                ];
+            }
+        } catch (Exception $e) {
+            $voidedDocument->update([
+                'estado_sunat' => 'ERROR',
+                'respuesta_sunat' => json_encode(['message' => $e->getMessage()])
+            ]);
+            
+            return [
+                'success' => false,
+                'document' => $voidedDocument->fresh(),
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    public function checkVoidedDocumentStatus(VoidedDocument $voidedDocument): array
+    {
+        try {
+            $company = $voidedDocument->company;
+            $greenterService = new GreenterService($company);
+            
+            // Consultar estado con ticket
+            $result = $greenterService->checkVoidedDocumentStatus($voidedDocument->ticket);
+            
+            if ($result['success']) {
+                // Procesar respuesta CDR
+                $cdrResponse = $result['cdr_response'];
+                $estado = 'PROCESANDO';
+                
+                if ($cdrResponse && method_exists($cdrResponse, 'getDescription') && $cdrResponse->getDescription() !== null) {
+                    if (strpos($cdrResponse->getDescription(), 'aceptad') !== false) {
+                        $estado = 'ACEPTADO';
+                        
+                        // Guardar CDR
+                        if ($result['cdr_zip']) {
+                            $cdrPath = $this->fileService->saveCdr($voidedDocument, $result['cdr_zip']);
+                            $voidedDocument->cdr_path = $cdrPath;
+                        }
+                    } elseif (strpos($cdrResponse->getDescription(), 'rechazad') !== false) {
+                        $estado = 'RECHAZADO';
+                    }
+                }
+                
+                $voidedDocument->update([
+                    'estado_sunat' => $estado,
+                    'respuesta_sunat' => $cdrResponse ? json_encode([
+                        'code' => $cdrResponse->getCode(),
+                        'description' => $cdrResponse->getDescription()
+                    ]) : null,
+                    'cdr_path' => $voidedDocument->cdr_path
+                ]);
+                
+                return [
+                    'success' => true,
+                    'document' => $voidedDocument->fresh()
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'document' => $voidedDocument,
+                    'error' => $result['error']
+                ];
+            }
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'document' => $voidedDocument,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    public function getDocumentsForVoiding(int $companyId, int $branchId, string $fechaReferencia, ?string $tipoDocumento = null): array
+    {
+        $documents = [];
+        
+        // Buscar facturas ACEPTADAS de la fecha
+        if (!$tipoDocumento || $tipoDocumento === '01') {
+            $facturas = Invoice::where('company_id', $companyId)
+                              ->where('branch_id', $branchId)
+                              ->whereDate('fecha_emision', $fechaReferencia)
+                              ->where('estado_sunat', 'ACEPTADO')
+                              ->get(['id', 'serie', 'correlativo', 'numero_completo', 'mto_imp_venta']);
+            
+            foreach ($facturas as $factura) {
+                $documents[] = [
+                    'id' => $factura->id,
+                    'tipo_documento' => '01',
+                    'serie' => $factura->serie,
+                    'correlativo' => $factura->correlativo,
+                    'numero_completo' => $factura->numero_completo,
+                    'monto' => $factura->mto_imp_venta,
+                    'tipo_nombre' => 'Factura'
+                ];
+            }
+        }
+        
+        // Buscar boletas ACEPTADAS de la fecha
+        if (!$tipoDocumento || $tipoDocumento === '03') {
+            $boletas = Boleta::where('company_id', $companyId)
+                            ->where('branch_id', $branchId)
+                            ->whereDate('fecha_emision', $fechaReferencia)
+                            ->where('estado_sunat', 'ACEPTADO')
+                            ->get(['id', 'serie', 'correlativo', 'numero_completo', 'mto_imp_venta']);
+            
+            foreach ($boletas as $boleta) {
+                $documents[] = [
+                    'id' => $boleta->id,
+                    'tipo_documento' => '03',
+                    'serie' => $boleta->serie,
+                    'correlativo' => $boleta->correlativo,
+                    'numero_completo' => $boleta->numero_completo,
+                    'monto' => $boleta->mto_imp_venta,
+                    'tipo_nombre' => 'Boleta'
+                ];
+            }
+        }
+        
+        // Buscar notas de crédito ACEPTADAS de la fecha
+        if (!$tipoDocumento || $tipoDocumento === '07') {
+            $creditNotes = CreditNote::where('company_id', $companyId)
+                                   ->where('branch_id', $branchId)
+                                   ->whereDate('fecha_emision', $fechaReferencia)
+                                   ->where('estado_sunat', 'ACEPTADO')
+                                   ->get(['id', 'serie', 'correlativo', 'numero_completo', 'mto_imp_venta']);
+            
+            foreach ($creditNotes as $creditNote) {
+                $documents[] = [
+                    'id' => $creditNote->id,
+                    'tipo_documento' => '07',
+                    'serie' => $creditNote->serie,
+                    'correlativo' => $creditNote->correlativo,
+                    'numero_completo' => $creditNote->numero_completo,
+                    'monto' => $creditNote->mto_imp_venta,
+                    'tipo_nombre' => 'Nota de Crédito'
+                ];
+            }
+        }
+        
+        // TODO: Agregar más tipos de documentos si es necesario (08, 09, etc.)
+        
+        return $documents;
+    }
+
+    protected function prepareVoidedDocumentData(VoidedDocument $voidedDocument): array
+    {
+        return [
+            'correlativo' => $voidedDocument->correlativo,
+            'fecha_emision' => $voidedDocument->fecha_emision->toDateString(),
+            'fecha_referencia' => $voidedDocument->fecha_referencia->toDateString(),
+            'detalles' => $voidedDocument->detalles,
+            'motivo_baja' => $voidedDocument->motivo_baja,
+        ];
+    }
+
+    protected function getNextVoidedDocumentCorrelative(int $companyId, string $fechaReferencia): string
+    {
+        // Obtener el último correlativo para la fecha de referencia
+        $lastVoided = VoidedDocument::where('company_id', $companyId)
+                                  ->whereDate('fecha_referencia', $fechaReferencia)
+                                  ->orderBy('correlativo', 'desc')
+                                  ->first();
+        
+        if (!$lastVoided) {
+            return '001';
+        }
+        
+        $nextCorrelativo = intval($lastVoided->correlativo) + 1;
+        return str_pad($nextCorrelativo, 3, '0', STR_PAD_LEFT);
+    }
+
+    public function convertirNumeroALetras($numero, $moneda = 'PEN'): string
+    {
+        $unidades = [
+            '', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve',
+            'diez', 'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve', 'veinte'
+        ];
+        
+        $decenas = [
+            '', '', 'veinte', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa'
+        ];
+        
+        $centenas = [
+            '', 'ciento', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos',
+            'seiscientos', 'setecientos', 'ochocientos', 'novecientos'
+        ];
+
+        // Convertir número a entero y obtener decimales
+        $partes = explode('.', number_format($numero, 2, '.', ''));
+        $entero = (int)$partes[0];
+        $decimales = $partes[1];
+
+        if ($entero == 0) {
+            $resultado = "cero con $decimales/100";
+        } else {
+            $resultado = $this->convertirEntero($entero, $unidades, $decenas, $centenas);
+            $resultado = trim($resultado) . " con $decimales/100";
+        }
+
+        // Añadir moneda
+        $monedaNombre = match($moneda) {
+            'PEN' => 'SOLES',
+            'USD' => 'DÓLARES AMERICANOS',
+            default => 'SOLES'
+        };
+
+        return strtoupper($resultado . ' ' . $monedaNombre);
+    }
+
+    protected function convertirEntero($numero, $unidades, $decenas, $centenas): string
+    {
+        if ($numero < 21) {
+            return $unidades[$numero];
+        }
+
+        if ($numero < 100) {
+            $dec = intval($numero / 10);
+            $uni = $numero % 10;
+            
+            if ($uni > 0) {
+                return $decenas[$dec] . ' y ' . $unidades[$uni];
+            } else {
+                return $decenas[$dec];
+            }
+        }
+
+        if ($numero < 1000) {
+            $cen = intval($numero / 100);
+            $resto = $numero % 100;
+            
+            $resultado = ($numero == 100) ? 'cien' : $centenas[$cen];
+            
+            if ($resto > 0) {
+                $resultado .= ' ' . $this->convertirEntero($resto, $unidades, $decenas, $centenas);
+            }
+            
+            return $resultado;
+        }
+
+        if ($numero < 1000000) {
+            $miles = intval($numero / 1000);
+            $resto = $numero % 1000;
+            
+            if ($miles == 1) {
+                $resultado = 'mil';
+            } else {
+                $resultado = $this->convertirEntero($miles, $unidades, $decenas, $centenas) . ' mil';
+            }
+            
+            if ($resto > 0) {
+                $resultado .= ' ' . $this->convertirEntero($resto, $unidades, $decenas, $centenas);
+            }
+            
+            return $resultado;
+        }
+
+        // For millions and beyond, simplified version
+        return 'número muy grande';
     }
 }

@@ -25,7 +25,7 @@ class StoreDebitNoteRequest extends FormRequest
             // Documento afectado
             'tipo_doc_afectado' => 'required|string|in:01,03',
             'num_doc_afectado' => 'required|string|max:20',
-            'cod_motivo' => 'required|string|max:2',
+            'cod_motivo' => 'required|string|in:01,02,03,10,11',
             'des_motivo' => 'required|string|max:250',
             
             // Cliente

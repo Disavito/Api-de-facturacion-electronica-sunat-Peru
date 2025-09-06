@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\HandlesPdfGeneration;
 use App\Services\DocumentService;
 use App\Services\FileService;
 use App\Models\CreditNote;
@@ -13,6 +14,8 @@ use Illuminate\Http\JsonResponse;
 
 class CreditNoteController extends Controller
 {
+    use HandlesPdfGeneration;
+    
     protected $documentService;
     protected $fileService;
 
@@ -244,6 +247,24 @@ class CreditNoteController extends Controller
         }
     }
 
+    public function generatePdf($id): JsonResponse
+    {
+        try {
+            $creditNote = CreditNote::with(['company', 'branch', 'client'])->findOrFail($id);
+            
+            $pdfResult = $this->handlePdfGeneration($creditNote, 'credit-note');
+            
+            return response()->json($pdfResult, $pdfResult['success'] ? 200 : 500);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al generar PDF',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function getMotivos(): JsonResponse
     {
         $motivos = [
@@ -257,6 +278,9 @@ class CreditNoteController extends Controller
             ['code' => '08', 'name' => 'Bonificación'],
             ['code' => '09', 'name' => 'Disminución en el valor'],
             ['code' => '10', 'name' => 'Otros conceptos'],
+            ['code' => '11', 'name' => 'Ajustes de operaciones de exportación'],
+            ['code' => '12', 'name' => 'Ajustes afectos al IVAP'],
+            ['code' => '13', 'name' => 'Ajustes - montos y/o fechas de pago'],
         ];
 
         return response()->json([

@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\DailySummaryController;
 use App\Http\Controllers\Api\CreditNoteController;
 use App\Http\Controllers\Api\DebitNoteController;
 use App\Http\Controllers\Api\RetentionController;
+use App\Http\Controllers\Api\VoidedDocumentController;
 use App\Http\Controllers\Api\PdfController;
 
 Route::get('/user', function (Request $request) {
@@ -110,6 +111,21 @@ Route::prefix('v1')->group(function () {
         Route::get('/{id}/download-cdr', [RetentionController::class, 'downloadCdr']);
         Route::get('/{id}/download-pdf', [RetentionController::class, 'downloadPdf']);
         Route::post('/{id}/generate-pdf', [RetentionController::class, 'generatePdf']);
+    });
+
+    // Comunicaciones de Baja
+    Route::prefix('voided-documents')->group(function () {
+        Route::get('/', [VoidedDocumentController::class, 'index']);
+        Route::post('/', [VoidedDocumentController::class, 'store']);
+        
+        // Obtener documentos disponibles para anular (DEBE IR ANTES de /{id})
+        Route::get('/available-documents', [VoidedDocumentController::class, 'getDocumentsForVoiding']);
+        
+        Route::get('/{id}', [VoidedDocumentController::class, 'show']);
+        Route::post('/{id}/send-sunat', [VoidedDocumentController::class, 'sendToSunat']);
+        Route::post('/{id}/check-status', [VoidedDocumentController::class, 'checkStatus']);
+        Route::get('/{id}/download-xml', [VoidedDocumentController::class, 'downloadXml']);
+        Route::get('/{id}/download-cdr', [VoidedDocumentController::class, 'downloadCdr']);
     });
     
 });

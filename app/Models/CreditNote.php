@@ -25,6 +25,8 @@ class CreditNote extends Model
         'fecha_emision',
         'ubl_version',
         'moneda',
+        'forma_pago_tipo',
+        'forma_pago_cuotas',
         'valor_venta',
         'mto_oper_gravadas',
         'mto_oper_exoneradas',
@@ -64,6 +66,7 @@ class CreditNote extends Model
         'mto_icbper' => 'decimal:2',
         'total_impuestos' => 'decimal:2',
         'mto_imp_venta' => 'decimal:2',
+        'forma_pago_cuotas' => 'array',
         'detalles' => 'array',
         'leyendas' => 'array',
         'guias' => 'array',
@@ -112,6 +115,9 @@ class CreditNote extends Model
             '08' => 'Bonificación',
             '09' => 'Disminución en el valor',
             '10' => 'Otros conceptos',
+            '11' => 'Ajustes de operaciones de exportación',
+            '12' => 'Ajustes afectos al IVAP',
+            '13' => 'Ajustes - montos y/o fechas de pago',
             default => $this->des_motivo
         };
     }

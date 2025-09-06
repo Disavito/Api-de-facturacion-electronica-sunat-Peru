@@ -28,6 +28,8 @@ use Greenter\Model\Retention\Retention;
 use Greenter\Model\Retention\RetentionDetail;
 use Greenter\Model\Retention\Payment;
 use Greenter\Model\Retention\Exchange;
+use Greenter\Model\Voided\Voided;
+use Greenter\Model\Voided\VoidedDetail;
 use Greenter\Ws\Services\SunatEndpoints;
 use Illuminate\Support\Facades\Log;
 use Exception;
@@ -307,6 +309,30 @@ class GreenterService
         $note->setCompany($this->getGreenterCompany())
              ->setClient($this->getGreenterClient($noteData['client']));
 
+        // Forma de pago (solo si es a crédito)
+        if (isset($noteData['forma_pago_tipo']) && $noteData['forma_pago_tipo'] === 'Credito') {
+            $note->setFormaPago(new FormaPagoCredito($noteData['mto_imp_venta']));
+            
+            // Cuotas (si están definidas)
+            if (isset($noteData['forma_pago_cuotas']) && !empty($noteData['forma_pago_cuotas'])) {
+                $cuotas = [];
+                foreach ($noteData['forma_pago_cuotas'] as $cuotaData) {
+                    $cuota = new Cuota();
+                    $cuota->setMonto($cuotaData['monto'])
+                          ->setFechaPago(new \DateTime($cuotaData['fecha_pago']));
+                    $cuotas[] = $cuota;
+                }
+                $note->setCuotas($cuotas);
+            }
+        }
+        // NOTA: Para pagos al contado, NO se establece forma de pago según ejemplo de Greenter
+
+        // Guías relacionadas (opcional)
+        if (isset($noteData['guias']) && !empty($noteData['guias'])) {
+            $guias = $this->createDocuments($noteData['guias']);
+            $note->setGuias($guias);
+        }
+
         // Montos
         $note->setMtoOperGravadas($noteData['mto_oper_gravadas'])
              ->setMtoOperExoneradas($noteData['mto_oper_exoneradas'])
@@ -314,6 +340,19 @@ class GreenterService
              ->setMtoIGV($noteData['mto_igv'])
              ->setTotalImpuestos($noteData['total_impuestos'])
              ->setMtoImpVenta($noteData['mto_imp_venta']);
+
+        // Montos opcionales
+        if (isset($noteData['mto_oper_gratuitas']) && $noteData['mto_oper_gratuitas'] > 0) {
+            $note->setMtoOperGratuitas($noteData['mto_oper_gratuitas']);
+        }
+        
+        if (isset($noteData['mto_isc']) && $noteData['mto_isc'] > 0) {
+            $note->setMtoISC($noteData['mto_isc']);
+        }
+        
+        if (isset($noteData['mto_icbper']) && $noteData['mto_icbper'] > 0) {
+            $note->setMtoOtrosTributos($noteData['mto_icbper']);
+        }
 
         // Detalles
         $details = $this->createSaleDetails($noteData['detalles']);
@@ -400,6 +439,20 @@ class GreenterService
         }
         
         return $legends;
+    }
+
+    protected function createDocuments(array $documentos): array
+    {
+        $documents = [];
+        
+        foreach ($documentos as $doc) {
+            $document = new \Greenter\Model\Sale\Document();
+            $document->setTipoDoc($doc['tipo_doc'])
+                     ->setNroDoc($doc['nro_doc']);
+            $documents[] = $document;
+        }
+        
+        return $documents;
     }
 
     public function sendDocument($document)
@@ -973,6 +1026,83 @@ class GreenterService
         try {
             $api = $this->getSeeApi();
             $result = $api->getStatus($ticket);
+            
+            return [
+                'success' => $result->isSuccess(),
+                'cdr_response' => $result->isSuccess() ? $result->getCdrResponse() : null,
+                'cdr_zip' => $result->isSuccess() ? $result->getCdrZip() : null,
+                'error' => $result->isSuccess() ? null : $result->getError()
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'cdr_response' => null,
+                'cdr_zip' => null,
+                'error' => (object)[
+                    'code' => 'EXCEPTION',
+                    'message' => $e->getMessage()
+                ]
+            ];
+        }
+    }
+
+    public function createVoidedDocument(array $voidedData): Voided
+    {
+        $voided = new Voided();
+        
+        // Configuración básica
+        $voided->setCorrelativo($voidedData['correlativo'])
+               ->setFecGeneracion(new \DateTime($voidedData['fecha_referencia'])) // Fecha de documentos a anular
+               ->setFecComunicacion(new \DateTime($voidedData['fecha_emision']))  // Fecha de comunicación
+               ->setCompany($this->getGreenterCompany());
+        
+        // Crear detalles de documentos a anular
+        $details = [];
+        foreach ($voidedData['detalles'] as $detalle) {
+            $detail = new VoidedDetail();
+            $detail->setTipoDoc($detalle['tipo_documento'])
+                   ->setSerie($detalle['serie'])
+                   ->setCorrelativo($detalle['correlativo'])
+                   ->setDesMotivoBaja($detalle['motivo_especifico']);
+            
+            $details[] = $detail;
+        }
+        
+        $voided->setDetails($details);
+        
+        return $voided;
+    }
+
+    public function sendVoidedDocument(Voided $voided)
+    {
+        try {
+            $see = $this->initializeSee();
+            $result = $see->send($voided);
+            
+            return [
+                'success' => $result->isSuccess(),
+                'xml' => $see->getFactory()->getLastXml(),
+                'ticket' => $result->isSuccess() ? $result->getTicket() : null,
+                'error' => $result->isSuccess() ? null : $result->getError()
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'xml' => null,
+                'ticket' => null,
+                'error' => (object)[
+                    'code' => 'EXCEPTION',
+                    'message' => $e->getMessage()
+                ]
+            ];
+        }
+    }
+
+    public function checkVoidedDocumentStatus(string $ticket)
+    {
+        try {
+            $see = $this->initializeSee();
+            $result = $see->getStatus($ticket);
             
             return [
                 'success' => $result->isSuccess(),

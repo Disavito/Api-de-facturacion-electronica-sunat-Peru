@@ -260,4 +260,46 @@ class DebitNoteController extends Controller
             'message' => 'Motivos de nota de débito obtenidos correctamente'
         ]);
     }
+
+    public function generatePdf($id): JsonResponse
+    {
+        try {
+            $debitNote = DebitNote::with(['company', 'branch', 'client'])->findOrFail($id);
+            
+            // Generar PDF usando DocumentService
+            $this->documentService->generateDebitNotePdf($debitNote);
+            
+            // Recargar el modelo para obtener el pdf_path actualizado
+            $debitNote->refresh();
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $debitNote->id,
+                    'serie' => $debitNote->serie,
+                    'correlativo' => $debitNote->correlativo,
+                    'numero_documento' => $debitNote->serie . '-' . $debitNote->correlativo,
+                    'fecha_emision' => $debitNote->fecha_emision,
+                    'pdf_path' => $debitNote->pdf_path,
+                    'pdf_url' => $debitNote->pdf_path ? url('storage/' . $debitNote->pdf_path) : null,
+                    'download_url' => url("/api/v1/debit-notes/{$debitNote->id}/download-pdf"),
+                    'estado_sunat' => $debitNote->estado_sunat,
+                    'mto_imp_venta' => $debitNote->mto_imp_venta,
+                    'moneda' => $debitNote->moneda,
+                    'client' => [
+                        'numero_documento' => $debitNote->client->numero_documento ?? null,
+                        'razon_social' => $debitNote->client->razon_social ?? null,
+                    ]
+                ],
+                'message' => 'PDF de nota de débito generado correctamente'
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al generar PDF',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

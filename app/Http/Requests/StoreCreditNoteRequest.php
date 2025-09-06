@@ -25,8 +25,14 @@ class StoreCreditNoteRequest extends FormRequest
             // Documento afectado
             'tipo_doc_afectado' => 'required|string|in:01,03,07,08',
             'num_doc_afectado' => 'required|string|max:20',
-            'cod_motivo' => 'required|string|max:2',
+            'cod_motivo' => 'required|string|in:01,02,03,04,05,06,07,08,09,10,11,12,13',
             'des_motivo' => 'required|string|max:250',
+            
+            // Forma de pago (opcional)
+            'forma_pago_tipo' => 'nullable|string|in:Contado,Credito',
+            'forma_pago_cuotas' => 'nullable|array',
+            'forma_pago_cuotas.*.monto' => 'required_with:forma_pago_cuotas|numeric|min:0.01',
+            'forma_pago_cuotas.*.fecha_pago' => 'required_with:forma_pago_cuotas|date|after:fecha_emision',
             
             // Cliente
             'client.tipo_documento' => 'required|string|in:1,4,6,0',
@@ -54,8 +60,8 @@ class StoreCreditNoteRequest extends FormRequest
 
             // Guías (opcional)
             'guias' => 'nullable|array',
-            'guias.*.tipo_documento' => 'required_with:guias|string|max:2',
-            'guias.*.numero_documento' => 'required_with:guias|string|max:20',
+            'guias.*.tipo_doc' => 'required_with:guias|string|max:2',
+            'guias.*.nro_doc' => 'required_with:guias|string|max:20',
 
             // Leyendas
             'leyendas' => 'nullable|array',
@@ -118,8 +124,14 @@ class StoreCreditNoteRequest extends FormRequest
             'detalles.*.mto_valor_unitario.required' => 'El valor unitario es requerido.',
             'detalles.*.mto_valor_unitario.min' => 'El valor unitario debe ser mayor o igual a 0.',
             
-            'guias.*.tipo_documento.required_with' => 'El tipo de documento de la guía es requerido cuando se especifica una guía.',
-            'guias.*.numero_documento.required_with' => 'El número de documento de la guía es requerido cuando se especifica una guía.',
+            'forma_pago_tipo.in' => 'La forma de pago debe ser Contado o Credito.',
+            'forma_pago_cuotas.*.monto.required_with' => 'El monto de la cuota es requerido.',
+            'forma_pago_cuotas.*.monto.min' => 'El monto de la cuota debe ser mayor a 0.',
+            'forma_pago_cuotas.*.fecha_pago.required_with' => 'La fecha de pago de la cuota es requerida.',
+            'forma_pago_cuotas.*.fecha_pago.after' => 'La fecha de pago debe ser posterior a la fecha de emisión.',
+            
+            'guias.*.tipo_doc.required_with' => 'El tipo de documento de la guía es requerido cuando se especifica una guía.',
+            'guias.*.nro_doc.required_with' => 'El número de documento de la guía es requerido cuando se especifica una guía.',
             'leyendas.*.code.required_with' => 'El código de la leyenda es requerido cuando se especifica una leyenda.',
             'leyendas.*.value.required_with' => 'El valor de la leyenda es requerido cuando se especifica una leyenda.',
         ];
