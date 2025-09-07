@@ -13,54 +13,35 @@ class DispatchGuide extends Model
     protected $fillable = [
         'company_id',
         'branch_id',
-        'destinatario_id', // Client como destinatario
+        'client_id', // Destinatario
         'tipo_documento',
         'serie',
         'correlativo',
         'numero_completo',
         'fecha_emision',
+        'fecha_traslado',
         'version',
         
         // Datos del envío
         'cod_traslado',
         'des_traslado',
         'mod_traslado',
-        'fec_traslado',
         'peso_total',
         'und_peso_total',
         'num_bultos',
         
-        // Direcciones
-        'partida_ubigeo',
-        'partida_direccion',
-        'llegada_ubigeo', 
-        'llegada_direccion',
+        // Direcciones (JSON en migración)
+        'partida',
+        'llegada',
         
-        // Transportista (si es transporte público)
-        'transportista_tipo_doc',
-        'transportista_num_doc',
-        'transportista_razon_social',
-        'transportista_nro_mtc',
-        
-        // Conductor (si es transporte privado)
-        'conductor_tipo',
-        'conductor_tipo_doc',
-        'conductor_num_doc',
-        'conductor_licencia',
-        'conductor_nombres',
-        'conductor_apellidos',
-        
-        // Vehículo principal
-        'vehiculo_placa',
-        
-        // Vehículos secundarios
-        'vehiculos_secundarios',
+        // Transportista y vehículo (JSON en migración)
+        'transportista',
+        'vehiculo',
         
         // Detalles de productos
         'detalles',
-        
-        // Observaciones
-        'observaciones',
+        'documentos_relacionados',
+        'datos_adicionales',
         
         // Archivos generados
         'xml_path',
@@ -71,7 +52,6 @@ class DispatchGuide extends Model
         'estado_sunat',
         'respuesta_sunat',
         'ticket',
-        'codigo_hash',
         
         // Auditoría
         'usuario_creacion',
@@ -79,11 +59,16 @@ class DispatchGuide extends Model
 
     protected $casts = [
         'fecha_emision' => 'date',
-        'fec_traslado' => 'date',
-        'peso_total' => 'decimal:2',
+        'fecha_traslado' => 'date',
+        'peso_total' => 'decimal:3',
         'num_bultos' => 'integer',
-        'vehiculos_secundarios' => 'array',
+        'partida' => 'array',
+        'llegada' => 'array',
+        'transportista' => 'array',
+        'vehiculo' => 'array',
         'detalles' => 'array',
+        'documentos_relacionados' => 'array',
+        'datos_adicionales' => 'array',
     ];
 
     public function company(): BelongsTo
@@ -98,7 +83,12 @@ class DispatchGuide extends Model
 
     public function destinatario(): BelongsTo
     {
-        return $this->belongsTo(Client::class, 'destinatario_id');
+        return $this->belongsTo(Client::class, 'client_id');
+    }
+    
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Client::class);
     }
 
     public function getTipoDocumentoNameAttribute(): string

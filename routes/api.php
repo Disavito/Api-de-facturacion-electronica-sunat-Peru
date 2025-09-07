@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\CreditNoteController;
 use App\Http\Controllers\Api\DebitNoteController;
 use App\Http\Controllers\Api\RetentionController;
 use App\Http\Controllers\Api\VoidedDocumentController;
+use App\Http\Controllers\Api\DispatchGuideController;
 use App\Http\Controllers\Api\PdfController;
 
 Route::get('/user', function (Request $request) {
@@ -126,6 +127,23 @@ Route::prefix('v1')->group(function () {
         Route::post('/{id}/check-status', [VoidedDocumentController::class, 'checkStatus']);
         Route::get('/{id}/download-xml', [VoidedDocumentController::class, 'downloadXml']);
         Route::get('/{id}/download-cdr', [VoidedDocumentController::class, 'downloadCdr']);
+    });
+
+    // Guías de Remisión
+    Route::prefix('dispatch-guides')->group(function () {
+        Route::get('/', [DispatchGuideController::class, 'index']);
+        Route::post('/', [DispatchGuideController::class, 'store']);
+        Route::get('/{id}', [DispatchGuideController::class, 'show']);
+        Route::post('/{id}/send-sunat', [DispatchGuideController::class, 'sendToSunat']);
+        Route::post('/{id}/check-status', [DispatchGuideController::class, 'checkStatus']);
+        Route::get('/{id}/download-xml', [DispatchGuideController::class, 'downloadXml']);
+        Route::get('/{id}/download-cdr', [DispatchGuideController::class, 'downloadCdr']);
+        Route::get('/{id}/download-pdf', [DispatchGuideController::class, 'downloadPdf']);
+        Route::post('/{id}/generate-pdf', [DispatchGuideController::class, 'generatePdf']);
+        
+        // Catálogos
+        Route::get('/catalogs/transfer-reasons', [DispatchGuideController::class, 'getTransferReasons']);
+        Route::get('/catalogs/transport-modes', [DispatchGuideController::class, 'getTransportModes']);
     });
     
 });

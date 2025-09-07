@@ -265,4 +265,87 @@ class DispatchGuideController extends Controller
             ], 500);
         }
     }
+
+    public function generatePdf($id): JsonResponse
+    {
+        try {
+            $dispatchGuide = DispatchGuide::with(['company', 'branch', 'destinatario'])->findOrFail($id);
+            
+            // Generar PDF usando DocumentService
+            $this->documentService->generateDispatchGuidePdf($dispatchGuide);
+            
+            // Recargar el modelo para obtener el pdf_path actualizado
+            $dispatchGuide->refresh();
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $dispatchGuide->id,
+                    'serie' => $dispatchGuide->serie,
+                    'correlativo' => $dispatchGuide->correlativo,
+                    'numero_documento' => $dispatchGuide->numero_completo,
+                    'fecha_emision' => $dispatchGuide->fecha_emision,
+                    'fecha_traslado' => $dispatchGuide->fec_traslado,
+                    'pdf_path' => $dispatchGuide->pdf_path,
+                    'pdf_url' => $dispatchGuide->pdf_path ? url('storage/' . $dispatchGuide->pdf_path) : null,
+                    'download_url' => url("/api/v1/dispatch-guides/{$dispatchGuide->id}/download-pdf"),
+                    'estado_sunat' => $dispatchGuide->estado_sunat,
+                    'peso_total' => $dispatchGuide->peso_total,
+                    'modalidad_traslado' => $dispatchGuide->modalidad_traslado_name,
+                    'motivo_traslado' => $dispatchGuide->motivo_traslado_name,
+                    'destinatario' => [
+                        'numero_documento' => $dispatchGuide->destinatario->numero_documento ?? null,
+                        'razon_social' => $dispatchGuide->destinatario->razon_social ?? null,
+                    ]
+                ],
+                'message' => 'PDF de guía de remisión generado correctamente'
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al generar PDF',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getTransferReasons(): JsonResponse
+    {
+        $reasons = [
+            ['code' => '01', 'name' => 'Venta'],
+            ['code' => '02', 'name' => 'Compra'],
+            ['code' => '03', 'name' => 'Venta con entrega a terceros'],
+            ['code' => '04', 'name' => 'Traslado entre establecimientos de la misma empresa'],
+            ['code' => '05', 'name' => 'Consignación'],
+            ['code' => '06', 'name' => 'Devolución'],
+            ['code' => '07', 'name' => 'Recojo de bienes transformados'],
+            ['code' => '08', 'name' => 'Importación'],
+            ['code' => '09', 'name' => 'Exportación'],
+            ['code' => '13', 'name' => 'Otros'],
+            ['code' => '14', 'name' => 'Venta sujeta a confirmación del comprador'],
+            ['code' => '18', 'name' => 'Traslado de bienes para transformación'],
+            ['code' => '19', 'name' => 'Traslado de bienes desde un centro de acopio'],
+        ];
+
+        return response()->json([
+            'success' => true,
+            'data' => $reasons,
+            'message' => 'Motivos de traslado obtenidos correctamente'
+        ]);
+    }
+
+    public function getTransportModes(): JsonResponse
+    {
+        $modes = [
+            ['code' => '01', 'name' => 'Transporte público'],
+            ['code' => '02', 'name' => 'Transporte privado'],
+        ];
+
+        return response()->json([
+            'success' => true,
+            'data' => $modes,
+            'message' => 'Modalidades de transporte obtenidas correctamente'
+        ]);
+    }
 }
