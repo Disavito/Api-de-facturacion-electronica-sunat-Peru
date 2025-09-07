@@ -352,7 +352,7 @@ class PdfService
             'destinatario' => $dispatchGuide->destinatario,
             'detalles' => $dispatchGuide->detalles ?? json_decode($dispatchGuide->detalles_json, true),
             'fecha_emision' => $dispatchGuide->fecha_emision->format('d/m/Y'),
-            'fecha_traslado' => $dispatchGuide->fec_traslado->format('d/m/Y'),
+            'fecha_traslado' => $dispatchGuide->fecha_traslado->format('d/m/Y'),
             'tipo_documento_nombre' => 'GUÍA DE REMISIÓN ELECTRÓNICA',
             'motivo_traslado' => $dispatchGuide->getMotivoTrasladoNameAttribute(),
             'modalidad_traslado' => $dispatchGuide->getModalidadTrasladoNameAttribute(),

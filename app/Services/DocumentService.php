@@ -10,6 +10,7 @@ use App\Models\Boleta;
 use App\Models\CreditNote;
 use App\Models\DebitNote;
 use App\Models\DailySummary;
+use App\Models\DispatchGuide;
 use App\Models\Retention;
 use App\Models\VoidedDocument;
 use App\Services\GreenterService;
@@ -1120,7 +1121,11 @@ class DocumentService
                            ->firstOrFail();
             
             // Crear o buscar destinatario
-            $destinatario = $this->getOrCreateClient($data['destinatario']);
+            if (isset($data['destinatario_id'])) {
+                $destinatario = Client::findOrFail($data['destinatario_id']);
+            } else {
+                $destinatario = $this->getOrCreateClient($data['destinatario']);
+            }
             
             // Obtener siguiente correlativo
             $serie = $data['serie'];
@@ -1130,7 +1135,7 @@ class DocumentService
             $dispatchGuide = DispatchGuide::create([
                 'company_id' => $company->id,
                 'branch_id' => $branch->id,
-                'destinatario_id' => $destinatario->id,
+                'client_id' => $destinatario->id,
                 'tipo_documento' => '09',
                 'serie' => $serie,
                 'correlativo' => $correlativo,
@@ -1141,32 +1146,41 @@ class DocumentService
                 'cod_traslado' => $data['cod_traslado'],
                 'des_traslado' => $data['des_traslado'] ?? null,
                 'mod_traslado' => $data['mod_traslado'],
-                'fec_traslado' => $data['fec_traslado'],
+                'fecha_traslado' => $data['fecha_traslado'],
                 'peso_total' => $data['peso_total'],
                 'und_peso_total' => $data['und_peso_total'],
                 'num_bultos' => $data['num_bultos'] ?? null,
                 
-                // Direcciones
-                'partida_ubigeo' => $data['partida_ubigeo'],
-                'partida_direccion' => $data['partida_direccion'],
-                'llegada_ubigeo' => $data['llegada_ubigeo'],
-                'llegada_direccion' => $data['llegada_direccion'],
+                // Direcciones 
+                'partida' => [
+                    'ubigeo' => $data['partida_ubigeo'],
+                    'direccion' => $data['partida_direccion']
+                ],
+                'llegada' => [
+                    'ubigeo' => $data['llegada_ubigeo'],
+                    'direccion' => $data['llegada_direccion']
+                ],
                 
-                // Datos de transporte (según modalidad)
-                'transportista_tipo_doc' => $data['transportista']['tipo_doc'] ?? null,
-                'transportista_num_doc' => $data['transportista']['num_doc'] ?? null,
-                'transportista_razon_social' => $data['transportista']['razon_social'] ?? null,
-                'transportista_nro_mtc' => $data['transportista']['nro_mtc'] ?? null,
+                // Datos de transporte (JSON según modalidad)
+                'transportista' => $data['mod_traslado'] === '01' ? [
+                    'tipo_doc' => $data['transportista_tipo_doc'] ?? null,
+                    'num_doc' => $data['transportista_num_doc'] ?? null,
+                    'razon_social' => $data['transportista_razon_social'] ?? null,
+                    'nro_mtc' => $data['transportista_nro_mtc'] ?? null,
+                ] : null,
                 
-                'conductor_tipo' => $data['conductor']['tipo'] ?? null,
-                'conductor_tipo_doc' => $data['conductor']['tipo_doc'] ?? null,
-                'conductor_num_doc' => $data['conductor']['num_doc'] ?? null,
-                'conductor_licencia' => $data['conductor']['licencia'] ?? null,
-                'conductor_nombres' => $data['conductor']['nombres'] ?? null,
-                'conductor_apellidos' => $data['conductor']['apellidos'] ?? null,
-                
-                'vehiculo_placa' => $data['vehiculo_placa'] ?? null,
-                'vehiculos_secundarios' => $data['vehiculos_secundarios'] ?? [],
+                'vehiculo' => $data['mod_traslado'] === '02' ? [
+                    'placa_principal' => $data['vehiculo_placa'] ?? null,
+                    'placa_secundaria' => null,
+                    'conductor' => [
+                        'tipo' => $data['conductor_tipo'] ?? null,
+                        'tipo_doc' => $data['conductor_tipo_doc'] ?? null,
+                        'num_doc' => $data['conductor_num_doc'] ?? null,
+                        'licencia' => $data['conductor_licencia'] ?? null,
+                        'nombres' => $data['conductor_nombres'] ?? null,
+                        'apellidos' => $data['conductor_apellidos'] ?? null,
+                    ]
+                ] : null,
                 
                 // Detalles y observaciones
                 'detalles' => $data['detalles'],
@@ -1320,16 +1334,16 @@ class DocumentService
             // Datos del envío
             'cod_traslado' => $guide->cod_traslado,
             'mod_traslado' => $guide->mod_traslado,
-            'fec_traslado' => $guide->fec_traslado->format('Y-m-d'),
+            'fec_traslado' => $guide->fecha_traslado->format('Y-m-d'),
             'peso_total' => $guide->peso_total,
             'und_peso_total' => $guide->und_peso_total,
             'num_bultos' => $guide->num_bultos,
             
             // Direcciones
-            'partida_ubigeo' => $guide->partida_ubigeo,
-            'partida_direccion' => $guide->partida_direccion,
-            'llegada_ubigeo' => $guide->llegada_ubigeo,
-            'llegada_direccion' => $guide->llegada_direccion,
+            'partida_ubigeo' => $guide->partida['ubigeo'] ?? '',
+            'partida_direccion' => $guide->partida['direccion'] ?? '',
+            'llegada_ubigeo' => $guide->llegada['ubigeo'] ?? '',
+            'llegada_direccion' => $guide->llegada['direccion'] ?? '',
             
             // Detalles
             'detalles' => $guide->detalles,
@@ -1339,25 +1353,12 @@ class DocumentService
         // Agregar datos de transporte según modalidad
         if ($guide->mod_traslado === '01') {
             // Transporte público
-            $data['transportista'] = [
-                'tipo_doc' => $guide->transportista_tipo_doc,
-                'num_doc' => $guide->transportista_num_doc,
-                'razon_social' => $guide->transportista_razon_social,
-                'nro_mtc' => $guide->transportista_nro_mtc,
-            ];
+            $data['transportista'] = $guide->transportista;
         } else {
             // Transporte privado
-            $data['conductor'] = [
-                'tipo' => $guide->conductor_tipo,
-                'tipo_doc' => $guide->conductor_tipo_doc,
-                'num_doc' => $guide->conductor_num_doc,
-                'licencia' => $guide->conductor_licencia,
-                'nombres' => $guide->conductor_nombres,
-                'apellidos' => $guide->conductor_apellidos,
-            ];
-            
-            $data['vehiculo_placa'] = $guide->vehiculo_placa;
-            $data['vehiculos_secundarios'] = $guide->vehiculos_secundarios;
+            $data['conductor'] = $guide->vehiculo['conductor'] ?? [];
+            $data['vehiculo_placa'] = $guide->vehiculo['placa_principal'] ?? '';
+            $data['vehiculos_secundarios'] = [];
         }
         
         return $data;
@@ -1367,7 +1368,9 @@ class DocumentService
     public function generateDocumentPdf($document, string $documentType): void
     {
         try {
-            $document = $document->load(['company', 'branch', 'client']);
+            logger()->info("Generando PDF para documento: {$document->id}, tipo: {$documentType}");
+            
+            $document = $document->load(['company', 'branch', 'destinatario']);
             
             $pdfContent = match($documentType) {
                 'invoice' => $this->pdfService->generateInvoicePdf($document),
@@ -1378,15 +1381,20 @@ class DocumentService
                 default => throw new Exception("Tipo de documento no soportado: $documentType")
             };
 
+            logger()->info("PDF generado, tamaño: " . strlen($pdfContent) . " bytes");
+
             // Guardar el PDF
             $pdfPath = $this->fileService->savePdf($document, $pdfContent);
+            logger()->info("PDF guardado en: {$pdfPath}");
             
             // Actualizar la ruta del PDF en el documento
             $document->update(['pdf_path' => $pdfPath]);
+            logger()->info("Ruta PDF actualizada en BD: {$pdfPath}");
 
         } catch (Exception $e) {
             // Log del error pero no interrumpir el flujo
             logger()->error("Error generando PDF para $documentType: " . $e->getMessage());
+            logger()->error("Stack trace: " . $e->getTraceAsString());
         }
     }
 

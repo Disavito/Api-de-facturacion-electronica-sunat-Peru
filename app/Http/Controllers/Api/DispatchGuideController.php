@@ -177,9 +177,20 @@ class DispatchGuideController extends Controller
                     'message' => 'Estado de la guía consultado correctamente'
                 ]);
             } else {
+                $errorMessage = 'Error desconocido';
+                if (isset($result['error'])) {
+                    if (is_object($result['error']) && method_exists($result['error'], 'getMessage')) {
+                        $errorMessage = $result['error']->getMessage();
+                    } elseif (is_string($result['error'])) {
+                        $errorMessage = $result['error'];
+                    } elseif (is_array($result['error'])) {
+                        $errorMessage = json_encode($result['error']);
+                    }
+                }
+                
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error al consultar estado: ' . ($result['error'] ?? 'Error desconocido')
+                    'message' => 'Error al consultar estado: ' . $errorMessage
                 ], 400);
             }
 

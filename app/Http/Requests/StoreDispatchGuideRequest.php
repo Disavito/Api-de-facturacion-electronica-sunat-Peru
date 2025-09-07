@@ -26,7 +26,7 @@ class StoreDispatchGuideRequest extends FormRequest
             'cod_traslado' => 'required|string|max:2',
             'des_traslado' => 'nullable|string|max:250',
             'mod_traslado' => 'required|string|in:01,02',
-            'fec_traslado' => 'required|date|after_or_equal:fecha_emision',
+            'fecha_traslado' => 'required|date|after_or_equal:fecha_emision',
             'peso_total' => 'required|numeric|min:0.001',
             'und_peso_total' => 'required|string|max:3',
             'num_bultos' => 'required|integer|min:1',
@@ -51,8 +51,8 @@ class StoreDispatchGuideRequest extends FormRequest
             'conductor_nombres' => 'nullable|string|max:100',
             'conductor_apellidos' => 'nullable|string|max:100',
             
-            // Vehículo principal
-            'vehiculo_placa' => 'required|string|max:10',
+            // Vehículo principal  
+            'vehiculo_placa' => 'nullable|string|max:10',
             
             // Vehículos secundarios
             'vehiculos_secundarios' => 'nullable|array',
@@ -96,20 +96,26 @@ class StoreDispatchGuideRequest extends FormRequest
                     $validator->errors()->add('transportista_razon_social', 'La razón social del transportista es requerida para transporte público.');
                 }
             } elseif ($this->input('mod_traslado') === '02') { // Transporte privado
-                if (!$this->input('conductor_tipo_doc')) {
-                    $validator->errors()->add('conductor_tipo_doc', 'El tipo de documento del conductor es requerido para transporte privado.');
-                }
-                if (!$this->input('conductor_num_doc')) {
-                    $validator->errors()->add('conductor_num_doc', 'El número de documento del conductor es requerido para transporte privado.');
-                }
-                if (!$this->input('conductor_licencia')) {
-                    $validator->errors()->add('conductor_licencia', 'La licencia del conductor es requerida para transporte privado.');
-                }
-                if (!$this->input('conductor_nombres')) {
-                    $validator->errors()->add('conductor_nombres', 'Los nombres del conductor son requeridos para transporte privado.');
-                }
-                if (!$this->input('conductor_apellidos')) {
-                    $validator->errors()->add('conductor_apellidos', 'Los apellidos del conductor son requeridos para transporte privado.');
+                // Para traslado entre establecimientos (código 04), el conductor es opcional
+                if ($this->input('cod_traslado') !== '04') {
+                    if (!$this->input('conductor_tipo_doc')) {
+                        $validator->errors()->add('conductor_tipo_doc', 'El tipo de documento del conductor es requerido para transporte privado.');
+                    }
+                    if (!$this->input('conductor_num_doc')) {
+                        $validator->errors()->add('conductor_num_doc', 'El número de documento del conductor es requerido para transporte privado.');
+                    }
+                    if (!$this->input('conductor_licencia')) {
+                        $validator->errors()->add('conductor_licencia', 'La licencia del conductor es requerida para transporte privado.');
+                    }
+                    if (!$this->input('conductor_nombres')) {
+                        $validator->errors()->add('conductor_nombres', 'Los nombres del conductor son requeridos para transporte privado.');
+                    }
+                    if (!$this->input('conductor_apellidos')) {
+                        $validator->errors()->add('conductor_apellidos', 'Los apellidos del conductor son requeridos para transporte privado.');
+                    }
+                    if (!$this->input('vehiculo_placa')) {
+                        $validator->errors()->add('vehiculo_placa', 'La placa del vehículo es requerida.');
+                    }
                 }
             }
         });
@@ -132,8 +138,8 @@ class StoreDispatchGuideRequest extends FormRequest
             'cod_traslado.required' => 'El código de motivo de traslado es requerido.',
             'mod_traslado.required' => 'La modalidad de traslado es requerida.',
             'mod_traslado.in' => 'La modalidad de traslado debe ser válida (01=Transporte público, 02=Transporte privado).',
-            'fec_traslado.required' => 'La fecha de traslado es requerida.',
-            'fec_traslado.after_or_equal' => 'La fecha de traslado debe ser igual o posterior a la fecha de emisión.',
+            'fecha_traslado.required' => 'La fecha de traslado es requerida.',
+            'fecha_traslado.after_or_equal' => 'La fecha de traslado debe ser igual o posterior a la fecha de emisión.',
             'peso_total.required' => 'El peso total es requerido.',
             'peso_total.min' => 'El peso total debe ser mayor a 0.',
             'und_peso_total.required' => 'La unidad de peso es requerida.',

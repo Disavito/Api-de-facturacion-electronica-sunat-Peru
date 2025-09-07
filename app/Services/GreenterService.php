@@ -869,6 +869,15 @@ class GreenterService
 
     public function createDespatch(array $despatchData): Despatch
     {
+        Log::info('Creando documento Despatch con datos:', [
+            'serie' => $despatchData['serie'] ?? 'N/A',
+            'correlativo' => $despatchData['correlativo'] ?? 'N/A',
+            'modalidad' => $despatchData['mod_traslado'] ?? 'N/A',
+            'has_destinatario' => isset($despatchData['destinatario']),
+            'has_conductor' => isset($despatchData['conductor']),
+            'has_transportista' => isset($despatchData['transportista'])
+        ]);
+        
         $despatch = new Despatch();
         
         // Configuración básica
@@ -888,9 +897,22 @@ class GreenterService
               ->setModTraslado($despatchData['mod_traslado'])
               ->setFecTraslado(new \DateTime($despatchData['fec_traslado']))
               ->setPesoTotal($despatchData['peso_total'])
-              ->setUndPesoTotal($despatchData['und_peso_total'])
-              ->setLlegada(new Direction($despatchData['llegada_ubigeo'], $despatchData['llegada_direccion']))
-              ->setPartida(new Direction($despatchData['partida_ubigeo'], $despatchData['partida_direccion']));
+              ->setUndPesoTotal($despatchData['und_peso_total']);
+              
+        // Configurar direcciones según tipo de traslado
+        $llegada = new Direction($despatchData['llegada_ubigeo'], $despatchData['llegada_direccion']);
+        $partida = new Direction($despatchData['partida_ubigeo'], $despatchData['partida_direccion']);
+        
+        // Para traslado entre establecimientos (código 04)
+        if ($despatchData['cod_traslado'] === '04') {
+            $envio->setIndicadores(['SUNAT_Envio_IndicadorTrasladoVehiculoM1L']);
+            
+            // Agregar RUC y código de local para misma empresa
+            $llegada->setRuc('20161515648')->setCodLocal('00002');
+            $partida->setRuc('20161515648')->setCodLocal('00001');
+        }
+        
+        $envio->setLlegada($llegada)->setPartida($partida);
 
         // Agregar número de bultos si está presente
         if (isset($despatchData['num_bultos']) && $despatchData['num_bultos'] > 0) {
@@ -914,7 +936,8 @@ class GreenterService
             }
         } else {
             // Transporte privado - Conductor y vehículo
-            if (isset($despatchData['conductor'])) {
+            // Para código 04 (traslado interno) el conductor es opcional
+            if (isset($despatchData['conductor']) && $despatchData['cod_traslado'] !== '04') {
                 $conductor = new Driver();
                 $conductor->setTipo($despatchData['conductor']['tipo'])
                          ->setTipoDoc($despatchData['conductor']['tipo_doc'])
@@ -923,7 +946,7 @@ class GreenterService
                          ->setNombres($despatchData['conductor']['nombres'])
                          ->setApellidos($despatchData['conductor']['apellidos']);
                 
-                $envio->setChofer($conductor);
+                $envio->setChoferes([$conductor]);
             }
 
             // Vehículo principal
@@ -976,19 +999,19 @@ class GreenterService
 
     protected function getGRECompany()
     {
-        // Para GRE (Guías de Remisión Electrónicas) se necesita configuración especial
+        // Para GRE usar datos consistentes con las credenciales SOL de test
         $company = new GreenterCompany();
         
-        $company->setRuc($this->company->ruc)
-                ->setRazonSocial($this->company->razon_social)
-                ->setNombreComercial($this->company->nombre_comercial ?? '')
+        $company->setRuc('20161515648') // Debe coincidir con credenciales SOL
+                ->setRazonSocial('EMPRESA DE PRUEBA SUNAT')
+                ->setNombreComercial('EMPRESA DE PRUEBA')
                 ->setAddress((new Address())
-                    ->setUbigueo($this->company->ubigeo ?? '150101')
-                    ->setDepartamento($this->company->departamento ?? '')
-                    ->setProvincia($this->company->provincia ?? '')
-                    ->setDistrito($this->company->distrito ?? '')
-                    ->setUrbanizacion($this->company->urbanizacion ?? '')
-                    ->setDireccion($this->company->direccion ?? '')
+                    ->setUbigueo('150101')
+                    ->setDepartamento('LIMA')
+                    ->setProvincia('LIMA')
+                    ->setDistrito('LIMA')
+                    ->setUrbanizacion('-')
+                    ->setDireccion('AV. LIMA 123')
                     ->setCodLocal('0000') // Para GRE, código de local
                 );
 
@@ -998,17 +1021,63 @@ class GreenterService
     public function sendDespatchDocument($despatch)
     {
         try {
+            Log::info('Enviando guía de remisión a SUNAT...', [
+                'serie' => $despatch->getSerie(),
+                'correlativo' => $despatch->getCorrelativo()
+            ]);
+            
             // Para guías de remisión se usa un endpoint específico (getSeeApi)
             $api = $this->getSeeApi();
             $result = $api->send($despatch);
+            
+            $error = $result->getError();
+            $errorInfo = null;
+            
+            if ($error) {
+                $errorInfo = [
+                    'code' => method_exists($error, 'getCode') ? $error->getCode() : 'N/A',
+                    'message' => method_exists($error, 'getMessage') ? $error->getMessage() : 'N/A',
+                    'class' => get_class($error)
+                ];
+            }
+            
+            Log::info('Respuesta de SUNAT para guía:', [
+                'success' => $result->isSuccess(),
+                'has_error' => $error !== null,
+                'error_info' => $errorInfo,
+                'xml_generated' => $api->getLastXml() !== null,
+                'xml_length' => $api->getLastXml() ? strlen($api->getLastXml()) : 0
+            ]);
+            
+            // Si no es exitoso, revisar el XML para debug
+            if (!$result->isSuccess()) {
+                $xml = $api->getLastXml();
+                if ($xml) {
+                    // Guardar XML completo para revisión
+                    $xmlPath = storage_path('logs/debug_despatch_' . date('Y-m-d_H-i-s') . '.xml');
+                    file_put_contents($xmlPath, $xml);
+                    
+                    Log::warning('Guía rechazada. XML guardado en:', [
+                        'xml_path' => $xmlPath,
+                        'error_code' => $errorInfo['code'] ?? 'N/A',
+                        'error_message' => $errorInfo['message'] ?? 'N/A',
+                        'xml_preview' => substr($xml, 0, 800)
+                    ]);
+                }
+            }
             
             return [
                 'success' => $result->isSuccess(),
                 'xml' => $api->getLastXml(),
                 'ticket' => $result->isSuccess() ? $result->getTicket() : null,
-                'error' => $result->isSuccess() ? null : $result->getError()
+                'error' => $result->isSuccess() ? null : $error
             ];
         } catch (Exception $e) {
+            Log::error('Excepción al enviar guía de remisión:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return [
                 'success' => false,
                 'xml' => null,
@@ -1125,19 +1194,42 @@ class GreenterService
 
     protected function getSeeApi()
     {
-        // Para GRE se necesita una instancia API específica
-        $see = new \Greenter\Api();
-        
-        // Configurar endpoint GRE
+        // Para GRE se usa una configuración específica
         $endpoint = $this->company->modo_produccion 
-            ? 'https://api-seguridad.sunat.gob.pe/v1/clientesextranet/{ruc}/oauth2/token/' // Producción
-            : 'https://gre-test.nubefact.com/v1/'; // Beta/Test
+            ? 'https://api-cpe.sunat.gob.pe/v1/' // Producción
+            : 'https://gre-test.nubefact.com/v1'; // Beta/Test
             
-        $see->setService($endpoint);
+        $api = new \Greenter\Api([
+            'auth' => $endpoint,
+            'cpe' => $endpoint,
+        ]);
         
-        // Configurar certificado
-        $see->setCertificate(file_get_contents($this->getCertificatePath()));
-        
-        return $see;
+        try {
+            $certificadoPath = storage_path('app/public/certificado/certificado.pem');
+            
+            if (!file_exists($certificadoPath)) {
+                throw new Exception("Archivo de certificado no encontrado: " . $certificadoPath);
+            }
+            
+            $certificadoContent = file_get_contents($certificadoPath);
+            
+            if ($certificadoContent === false) {
+                throw new Exception("No se pudo leer el archivo de certificado");
+            }
+            
+            return $api->setBuilderOptions([
+                    'strict_variables' => true,
+                    'optimizations' => 0,
+                    'debug' => true,
+                    'cache' => false,
+                ])
+                ->setApiCredentials('test-85e5b0ae-255c-4891-a595-0b98c65c9854', 'test-Hty/M6QshYvPgItX2P0+Kw==')
+                ->setClaveSOL('20161515648', 'MODDATOS', 'MODDATOS')
+                ->setCertificate($certificadoContent);
+                
+        } catch (Exception $e) {
+            Log::error("Error al configurar API GRE: " . $e->getMessage());
+            throw new Exception("Error al configurar API GRE: " . $e->getMessage());
+        }
     }
 }
